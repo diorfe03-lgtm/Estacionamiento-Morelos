@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Estacionamiento</title>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  margin: 0;
+  padding: 20px;
+}
+
+.app {
+  max-width: 420px;
+  margin: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+h2 { text-align: center; color:#2a5298; }
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 10px 0;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+}
+
+.primary { background:#2a5298; color:white; }
+.secondary { background:#f1f5f9; }
+.success { background:#16a34a; color:white; }
+
+input {
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:10px;
+  border:1px solid #ccc;
+}
+
+.card {
+  background:#f8fafc;
+  padding:15px;
+  border-radius:12px;
+  margin-top:15px;
+}
+
+.hidden { display:none; }
+.total { font-size:20px; color:#16a34a; font-weight:bold; }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <h2>🚗 Estacionamiento</h2>
+
+  <button class="primary" onclick="showNew()">Nuevo boleto</button>
+  <button class="secondary" onclick="showPay()">Cobrar</button>
+
+  <!-- NUEVO -->
+  <div id="newTicket" class="card hidden">
+    <input placeholder="Marca" id="marca">
+    <input placeholder="Modelo" id="modelo">
+    <input placeholder="Color" id="color">
+    <input placeholder="Placas" id="placas">
+    <button class="primary" onclick="createTicket()">Imprimir boleto</button>
+  </div>
+
+  <!-- COBRAR -->
+  <div id="payTicket" class="card hidden">
+    <input placeholder="ID del QR" id="qrId">
+    <button class="secondary" onclick="scanQr()">Escanear QR</button>
+    <div id="chargeInfo"></div>
+    <label><input type="checkbox" id="confirmPaid"> Cobrado</label>
+    <button class="success" onclick="confirmPayment()">Confirmar</button>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:3000";
+
+function showNew() {
+  newTicket.classList.remove("hidden");
+  payTicket.classList.add("hidden");
+}
+
+function showPay() {
+  payTicket.classList.remove("hidden");
+  newTicket.classList.add("hidden");
+}
+
+function goHome() {
+  newTicket.classList.add("hidden");
+  payTicket.classList.add("hidden");
+}
+
+async function createTicket() {
+  const res = await fetch(API + "/ticket", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      marca:marca.value,
+      modelo:modelo.value,
+      color:color.value,
+      placas:placas.value
+    })
+  });
+
+  const data = await res.json();
+  printTicket(data.id);
+  goHome();
+}
+
+function printTicket(id) {
+  const win = window.open("", "", "width=300,height=600");
+
+  win.document.write(`
+    <html>
+    <body style="font-family:monospace;text-align:center">
+      <h3>Estacionamiento Morelos :)</h3>
+      <canvas id="qr"></canvas>
+      <p>ID: ${id}</p>
+      <p>${marca.value || ""}</p>
+      <p>${modelo.value || ""}</p>
+      <p>${color.value || ""}</p>
+      <p>${placas.value || ""}</p>
+      <p>Gracias por su visita</p>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
+
+  QRCode.toCanvas(win.document.getElementById("qr"), id, () => {
+    win.print();
+    win.close();
+  });
+}
+
+async function scanQr() {
+  const res = await fetch(API + "/ticket/" + qrId.value);
+  const data = await res.json();
+
+  if (data.error) {
+    chargeInfo.innerHTML = data.error;
+    return;
+  }
+
+  chargeInfo.innerHTML = `
+    <p>${data.placas || ""}</p>
+    <div class="total">$${data.monto}</div>
+  `;
+}
+
+async function confirmPayment() {
+  if (!confirmPaid.checked) return alert("Marca cobrado");
+
+  await fetch(API + "/pay/" + qrId.value, { method:"POST" });
+  alert("Cobro registrado");
+  goHome();
+}
+</script>
+
+</body>
+</html>
