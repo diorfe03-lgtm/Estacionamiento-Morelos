@@ -8,41 +8,53 @@
 
 <style>
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
-  .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; }
-  h2 { text-align: center; color:#2a5298; }
-  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; }
+  .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+  h2 { text-align: center; color:#2a5298; margin-bottom: 20px; }
+  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.3s; }
   .primary { background:#2a5298; color:white; }
-  .secondary { background:#f1f5f9; }
+  .secondary { background:#f1f5f9; color: #1e3c72; }
   .success { background:#16a34a; color:white; }
-  input { width:100%; padding:12px; margin:6px 0; border-radius:10px; border:1px solid #ccc; box-sizing: border-box; }
-  .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; }
+  input { width:100%; padding:12px; margin:6px 0; border-radius:10px; border:1px solid #ccc; box-sizing: border-box; font-size: 16px; }
+  .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; border: 1px solid #e2e8f0; }
   .hidden { display:none; }
-  .total { font-size:22px; color:#16a34a; font-weight:bold; margin: 10px 0; }
-  .info-pago p { margin: 5px 0; font-size: 14px; color: #444; }
+  .total { font-size:24px; color:#16a34a; font-weight:bold; margin: 10px 0; }
+  .info-pago p { margin: 8px 0; font-size: 15px; color: #334155; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
 </style>
 </head>
 
 <body>
 <div class="app">
   <h2>🚗 Estacionamiento</h2>
+  
   <button class="primary" onclick="showNew()">Nuevo boleto</button>
-  <button class="secondary" onclick="showPay()">Cobrar</button>
+  <button class="secondary" onclick="showPay()">Cobrar Boleto</button>
 
   <div id="newTicket" class="card hidden">
     <input placeholder="Marca" id="marca">
     <input placeholder="Modelo" id="modelo">
     <input placeholder="Color" id="color">
     <input placeholder="Placas" id="placas">
-    <button class="primary" onclick="createTicket()">Imprimir boleto</button>
+    <button class="primary" onclick="createTicket()">Generar e Imprimir</button>
   </div>
 
   <div id="payTicket" class="card hidden">
-    <input placeholder="ID del QR" id="qrId">
-    <button class="secondary" onclick="scanQr()">Buscar Boleto</button>
+    <input placeholder="Escanea o escribe ID" id="qrId">
+    <button class="secondary" onclick="scanQr()">Buscar Datos</button>
     <div id="chargeInfo" class="info-pago"></div>
     <div id="confirmArea" class="hidden">
-      <label><input type="checkbox" id="confirmPaid"> Confirmar Cobro</label>
-      <button class="success" onclick="confirmPayment()">Finalizar y Registrar</button>
+      <label style="display:block; margin: 15px 0; cursor:pointer;">
+        <input type="checkbox" id="confirmPaid"> Confirmar pago recibido
+      </label>
+      <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
+    </div>
+  </div>
+
+  <div style="margin-top: 30px; border-top: 2px dashed #e2e8f0; padding-top: 10px;">
+    <button style="font-size: 13px; opacity: 0.8;" class="secondary" onclick="toggleCorte()">📊 Reporte del Día</button>
+    <div id="corteSection" class="card hidden">
+      <input type="password" id="adminPass" placeholder="Contraseña Admin">
+      <button class="primary" onclick="obtenerCorte()">Ver Total de Hoy</button>
+      <div id="corteResultado"></div>
     </div>
   </div>
 </div>
@@ -63,67 +75,50 @@ function showPay() {
 }
 
 function limpiarFormularioNuevo() {
-  marca.value = "";
-  modelo.value = "";
-  color.value = "";
-  placas.value = "";
+  marca.value = ""; modelo.value = ""; color.value = ""; placas.value = "";
 }
 
 function limpiarFormularioCobro() {
   qrId.value = "";
   chargeInfo.innerHTML = "";
   confirmPaid.checked = false;
-  document.getElementById("confirmArea").classList.add("hidden");
+  confirmArea.classList.add("hidden");
 }
 
 async function createTicket() {
-  const datos = {
-    marca: marca.value,
-    modelo: modelo.value,
-    color: color.value,
-    placas: placas.value
-  };
-
+  const datos = { marca: marca.value, modelo: modelo.value, color: color.value, placas: placas.value };
   const res = await fetch(API + "/ticket", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body:JSON.stringify(datos)
   });
-
   const data = await res.json();
   printTicket(data.id, datos);
-  limpiarFormularioNuevo(); // Limpia después de imprimir
+  limpiarFormularioNuevo();
   newTicket.classList.add("hidden");
 }
 
 function printTicket(id, info) {
   const win = window.open("", "", "width=300,height=600");
   const d = new Date();
-  
   win.document.write(`
-    <html>
-    <body style="font-family:monospace;text-align:center; padding: 20px;">
-      <h2 style="margin-bottom:0;">Estacionamiento</h2>
-      <p style="margin-top:0;">Morelos :)</p>
+    <html><body style="font-family:monospace;text-align:center;padding:20px;">
+      <h3>ESTACIONAMIENTO</h3>
       <canvas id="qr"></canvas>
-      <div style="text-align:left; margin-top:10px; font-size:12px;">
+      <div style="text-align:left;font-size:12px;margin-top:10px;">
         <p><strong>ID:</strong> ${id.substring(0,8)}</p>
+        <p><strong>Placas:</strong> ${info.placas || "----"}</p>
         <p><strong>Marca:</strong> ${info.marca || "----"}</p>
         <p><strong>Modelo:</strong> ${info.modelo || "----"}</p>
         <p><strong>Color:</strong> ${info.color || "----"}</p>
-        <p><strong>Placas:</strong> ${info.placas || "----"}</p>
         <p><strong>Entrada:</strong> ${d.toLocaleTimeString()}</p>
       </div>
-      <p>-------------------------</p>
       <p>Guarde su boleto</p>
-    </body>
-    </html>
+    </body></html>
   `);
   win.document.close();
-
-  QRCode.toCanvas(win.document.getElementById("qr"), id, { width: 150 }, () => {
-    win.print();
-    win.close();
+  QRCode.toCanvas(win.document.getElementById("qr"), id, { width: 160 }, () => {
+    win.print(); win.close();
   });
 }
 
@@ -131,35 +126,45 @@ async function scanQr() {
   if(!qrId.value) return;
   const res = await fetch(API + "/ticket/" + qrId.value);
   const data = await res.json();
-
   if (data.error) {
-    chargeInfo.innerHTML = `<p style="color:red">${data.error}</p>`;
-    document.getElementById("confirmArea").classList.add("hidden");
+    chargeInfo.innerHTML = `<p style="color:red;">${data.error}</p>`;
+    confirmArea.classList.add("hidden");
     return;
   }
-
-  // Mostrar todos los datos solicitados al leer el QR
   chargeInfo.innerHTML = `
-    <div style="border-top:1px solid #ccc; margin-top:10px; padding-top:10px;">
-      <p><strong>Placas:</strong> ${data.placas || "----"}</p>
-      <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
-      <p><strong>Salida (Estimada):</strong> ${new Date().toLocaleTimeString('es-MX')}</p>
-      <p>Precio a cobrar:</p>
-      <div class="total">$${data.monto}.00</div>
-    </div>
+    <p><strong>Placa:</strong> ${data.placas}</p>
+    <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
+    <p><strong>Salida:</strong> ${new Date().toLocaleTimeString('es-MX')}</p>
+    <p style="margin-top:10px;">PRECIO A COBRAR:</p>
+    <div class="total">$${data.monto}.00</div>
   `;
-  document.getElementById("confirmArea").classList.remove("hidden");
+  confirmArea.classList.remove("hidden");
 }
 
 async function confirmPayment() {
-  if (!confirmPaid.checked) return alert("Debe marcar la casilla de 'Confirmar Cobro'");
-
-  const res = await fetch(API + "/pay/" + qrId.value, { method:"POST" });
-  const result = await res.json();
-  
-  alert(result.message + " - Total: $" + result.monto);
+  if (!confirmPaid.checked) return alert("Marca el cuadro de confirmación");
+  await fetch(API + "/pay/" + qrId.value, { method:"POST" });
+  alert("Pago registrado con éxito");
   limpiarFormularioCobro();
   payTicket.classList.add("hidden");
+}
+
+function toggleCorte() {
+  corteSection.classList.toggle("hidden");
+  corteResultado.innerHTML = "";
+}
+
+async function obtenerCorte() {
+  if (adminPass.value !== "KAtia1407.") return alert("Acceso denegado");
+  const res = await fetch(API + "/corte-caja");
+  const data = await res.json();
+  corteResultado.innerHTML = `
+    <div style="margin-top:10px; border-top: 1px solid #ccc;">
+      <p>Hoy: ${data.fecha}</p>
+      <p>Autos: ${data.boletos}</p>
+      <p class="total">Total: $${data.total}.00</p>
+    </div>
+  `;
 }
 </script>
 </body>
