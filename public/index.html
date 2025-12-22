@@ -6,170 +6,126 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
-    body { background:#1e3c72; padding:20px; font-family:sans-serif; }
-    .app { background:#fff; max-width:420px; margin:auto; padding:20px; border-radius:16px; }
-    .hidden { display:none; }
-    .total { font-size:24px; font-weight:bold; color:green; margin: 10px 0; }
-    .info-box { background: #f0f0f0; padding: 10px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #1e3c72; }
-    input, button { width:100%; padding:12px; margin:6px 0; box-sizing: border-box; }
-    label { display: block; margin: 10px 0; font-weight: bold; }
+body { background:#1e3c72; padding:20px; font-family:sans-serif; }
+.app { background:#fff; max-width:420px; margin:auto; padding:20px; border-radius:16px; }
+.hidden { display:none; }
+.total { font-size:20px; font-weight:bold; color:green; }
+input,button { width:100%; padding:12px; margin:6px 0; }
 </style>
 </head>
 
 <body>
 <div class="app">
-    <h2>🚗 Estacionamiento</h2>
+<h2>🚗 Estacionamiento</h2>
 
-    <button onclick="showNew()">Nuevo boleto</button>
-    <button onclick="showPay()">Cobrar</button>
+<button onclick="showNew()">Nuevo boleto</button>
+<button onclick="showPay()">Cobrar</button>
 
-    <div id="newTicket" class="hidden">
-        <input id="placas" placeholder="Placas *">
-        <input id="marca" placeholder="Marca">
-        <input id="modelo" placeholder="Modelo">
-        <input id="color" placeholder="Color">
-        <button onclick="createTicket()" style="background: #28a745; color: white; border: none;">Imprimir</button>
-    </div>
+<div id="newTicket" class="hidden">
+  <input id="placas" placeholder="Placas *">
+  <input id="marca" placeholder="Marca">
+  <input id="modelo" placeholder="Modelo">
+  <input id="color" placeholder="Color">
+  <button onclick="createTicket()">Imprimir</button>
+</div>
 
-    <div id="payTicket" class="hidden">
-        <input id="qrId" placeholder="ID del Boleto (QR)">
-        <button onclick="scanQr()">Buscar Datos</button>
-        
-        <div id="chargeInfo"></div> <div id="confirmSection" class="hidden">
-            <label>
-                <input type="checkbox" id="confirmPaid"> Confirmar pago recibido
-            </label>
-            <button onclick="confirmPayment()" style="background: #007bff; color: white; border: none;">Finalizar Salida</button>
-        </div>
-    </div>
+<div id="payTicket" class="hidden">
+  <input id="qrId" placeholder="ID QR">
+  <button onclick="scanQr()">Buscar</button>
+  <div id="chargeInfo"></div>
+  <label><input type="checkbox" id="confirmPaid"> Cobrado</label>
+  <button onclick="confirmPayment()">Confirmar</button>
+</div>
 </div>
 
 <script>
 const API = location.origin;
 
-// Seleccionamos elementos una vez
-const ui = {
-    placas: document.getElementById('placas'),
-    marca: document.getElementById('marca'),
-    modelo: document.getElementById('modelo'),
-    color: document.getElementById('color'),
-    qrId: document.getElementById('qrId'),
-    chargeInfo: document.getElementById('chargeInfo'),
-    confirmPaid: document.getElementById('confirmPaid'),
-    confirmSection: document.getElementById('confirmSection')
-};
-
 function limpiarNuevo() {
-    ui.placas.value = "";
-    ui.marca.value = "";
-    ui.modelo.value = "";
-    ui.color.value = "";
+  placas.value = marca.value = modelo.value = color.value = "";
 }
 
 function limpiarCobro() {
-    ui.qrId.value = "";
-    ui.chargeInfo.innerHTML = "";
-    ui.confirmPaid.checked = false;
-    ui.confirmSection.classList.add("hidden");
+  qrId.value = "";
+  chargeInfo.innerHTML = "";
+  confirmPaid.checked = false;
 }
 
 function showNew() {
-    limpiarNuevo();
-    limpiarCobro();
-    document.getElementById("newTicket").classList.remove("hidden");
-    document.getElementById("payTicket").classList.add("hidden");
+  limpiarNuevo();
+  limpiarCobro();
+  newTicket.classList.remove("hidden");
+  payTicket.classList.add("hidden");
 }
 
 function showPay() {
-    limpiarNuevo();
-    limpiarCobro();
-    document.getElementById("payTicket").classList.remove("hidden");
-    document.getElementById("newTicket").classList.add("hidden");
+  limpiarNuevo();
+  limpiarCobro();
+  payTicket.classList.remove("hidden");
+  newTicket.classList.add("hidden");
 }
 
 async function createTicket() {
-    const pVal = ui.placas.value.trim();
-    if (!pVal) return alert("Las placas son obligatorias");
+  if (!placas.value.trim()) return alert("Placas obligatorias");
 
-    const bodyData = {
-        placas: pVal,
-        marca: ui.marca.value || "----",
-        modelo: ui.modelo.value || "----",
-        color: ui.color.value || "----"
-    };
+  const res = await fetch(API + "/ticket", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      placas: placas.value,
+      marca: marca.value,
+      modelo: modelo.value,
+      color: color.value
+    })
+  });
 
-    const res = await fetch(API + "/ticket", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(bodyData)
-    });
+  const { id } = await res.json();
 
-    const { id } = await res.json();
+  const win = window.open("", "", "width=300,height=500");
+  win.document.write(`
+    <h3>Estacionamiento Morelos</h3>
+    <canvas id="qr"></canvas>
+    <p>Placas: ${placas.value}</p>
+    <p>Marca: ${marca.value || "----"}</p>
+    <p>Modelo: ${modelo.value || "----"}</p>
+    <p>Color: ${color.value || "----"}</p>
+  `);
 
-    const win = window.open("", "", "width=300,height=500");
-    win.document.write(`
-        <div style="text-align:center; font-family:sans-serif;">
-            <h3>Estacionamiento Morelos</h3>
-            <canvas id="qr"></canvas>
-            <div style="text-align:left; margin-top:10px;">
-                <p><strong>Placas:</strong> ${bodyData.placas}</p>
-                <p><strong>Marca:</strong> ${bodyData.marca}</p>
-                <p><strong>Modelo:</strong> ${bodyData.modelo}</p>
-                <p><strong>Color:</strong> ${bodyData.color}</p>
-            </div>
-            <p>_______________________</p>
-        </div>
-    `);
+  QRCode.toCanvas(win.document.getElementById("qr"), id, () => {
+    win.print();
+    win.close();
+  });
 
-    QRCode.toCanvas(win.document.getElementById("qr"), id, (error) => {
-        if (error) console.error(error);
-        win.print();
-        win.close();
-        
-        // LIMPIEZA INMEDIATA TRAS IMPRIMIR
-        limpiarNuevo();
-    });
+  limpiarNuevo();
 }
 
 async function scanQr() {
-    if (!ui.qrId.value.trim()) return alert("Ingrese ID");
-    
-    const r = await fetch(API + "/ticket/" + ui.qrId.value);
-    const d = await r.json();
+  const r = await fetch(API + "/ticket/" + qrId.value);
+  const d = await r.json();
 
-    if (d.error) {
-        ui.chargeInfo.innerHTML = `<p style="color:red">${d.error}</p>`;
-        ui.confirmSection.classList.add("hidden");
-        return;
-    }
+  if (d.error) return chargeInfo.innerText = d.error;
 
-    // MOSTRAR DATOS EN EL FRONT AL MOMENTO DE COBRAR
-    ui.chargeInfo.innerHTML = `
-        <div class="info-box">
-            <p><strong>Placas:</strong> ${d.placas}</p>
-            <p><strong>Entrada:</strong> ${d.horaEntrada}</p>
-            <p><strong>Tiempo transcurrido:</strong> ${d.tiempo}</p>
-            <div class="total">Total: $${d.monto}</div>
-        </div>
-    `;
-    ui.confirmSection.classList.remove("hidden");
+  chargeInfo.innerHTML = `
+    <p>Placas: ${d.placas}</p>
+    <p>Hora entrada: ${d.horaEntrada}</p>
+    <div class="total">$${d.monto}</div>
+  `;
 }
 
 async function confirmPayment() {
-    if (!ui.confirmPaid.checked) return alert("Debe marcar 'Cobrado' para continuar");
+  if (!confirmPaid.checked) return alert("Marca cobrado");
 
-    const r = await fetch(API + "/pay/" + ui.qrId.value, { method:"POST" });
-    const d = await r.json();
+  const r = await fetch(API + "/pay/" + qrId.value, { method:"POST" });
+  const d = await r.json();
 
-    alert(
-        `PAGO CONFIRMADO\n` +
-        `Placas: ${d.placas}\n` +
-        `Entrada: ${d.horaEntrada}\n` +
-        `Salida: ${d.horaSalida}\n` +
-        `Total Cobrado: $${d.monto}`
-    );
+  alert(
+    `Placas: ${d.placas}\n` +
+    `Entrada: ${d.horaEntrada}\n` +
+    `Salida: ${d.horaSalida}\n` +
+    `Total: $${d.monto}`
+  );
 
-    limpiarCobro();
+  limpiarCobro();
 }
 </script>
 </body>
