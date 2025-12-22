@@ -1,131 +1,165 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Estacionamiento</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
-body { background:#1e3c72; padding:20px; font-family:sans-serif; }
-.app { background:#fff; max-width:420px; margin:auto; padding:20px; border-radius:16px; }
-.hidden { display:none; }
-.total { font-size:20px; font-weight:bold; color:green; }
-input,button { width:100%; padding:12px; margin:6px 0; }
+  body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
+  .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; }
+  h2 { text-align: center; color:#2a5298; }
+  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; }
+  .primary { background:#2a5298; color:white; }
+  .secondary { background:#f1f5f9; }
+  .success { background:#16a34a; color:white; }
+  input { width:100%; padding:12px; margin:6px 0; border-radius:10px; border:1px solid #ccc; box-sizing: border-box; }
+  .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; }
+  .hidden { display:none; }
+  .total { font-size:22px; color:#16a34a; font-weight:bold; margin: 10px 0; }
+  .info-pago p { margin: 5px 0; font-size: 14px; color: #444; }
 </style>
 </head>
 
 <body>
 <div class="app">
-<h2>🚗 Estacionamiento</h2>
+  <h2>🚗 Estacionamiento</h2>
+  <button class="primary" onclick="showNew()">Nuevo boleto</button>
+  <button class="secondary" onclick="showPay()">Cobrar</button>
 
-<button onclick="showNew()">Nuevo boleto</button>
-<button onclick="showPay()">Cobrar</button>
+  <div id="newTicket" class="card hidden">
+    <input placeholder="Marca" id="marca">
+    <input placeholder="Modelo" id="modelo">
+    <input placeholder="Color" id="color">
+    <input placeholder="Placas" id="placas">
+    <button class="primary" onclick="createTicket()">Imprimir boleto</button>
+  </div>
 
-<div id="newTicket" class="hidden">
-  <input id="placas" placeholder="Placas *">
-  <input id="marca" placeholder="Marca">
-  <input id="modelo" placeholder="Modelo">
-  <input id="color" placeholder="Color">
-  <button onclick="createTicket()">Imprimir</button>
-</div>
-
-<div id="payTicket" class="hidden">
-  <input id="qrId" placeholder="ID QR">
-  <button onclick="scanQr()">Buscar</button>
-  <div id="chargeInfo"></div>
-  <label><input type="checkbox" id="confirmPaid"> Cobrado</label>
-  <button onclick="confirmPayment()">Confirmar</button>
-</div>
+  <div id="payTicket" class="card hidden">
+    <input placeholder="ID del QR" id="qrId">
+    <button class="secondary" onclick="scanQr()">Buscar Boleto</button>
+    <div id="chargeInfo" class="info-pago"></div>
+    <div id="confirmArea" class="hidden">
+      <label><input type="checkbox" id="confirmPaid"> Confirmar Cobro</label>
+      <button class="success" onclick="confirmPayment()">Finalizar y Registrar</button>
+    </div>
+  </div>
 </div>
 
 <script>
-const API = location.origin;
-
-function limpiarNuevo() {
-  placas.value = marca.value = modelo.value = color.value = "";
-}
-
-function limpiarCobro() {
-  qrId.value = "";
-  chargeInfo.innerHTML = "";
-  confirmPaid.checked = false;
-}
+const API = window.location.origin;
 
 function showNew() {
-  limpiarNuevo();
-  limpiarCobro();
   newTicket.classList.remove("hidden");
   payTicket.classList.add("hidden");
+  limpiarFormularioNuevo();
 }
 
 function showPay() {
-  limpiarNuevo();
-  limpiarCobro();
   payTicket.classList.remove("hidden");
   newTicket.classList.add("hidden");
+  limpiarFormularioCobro();
+}
+
+function limpiarFormularioNuevo() {
+  marca.value = "";
+  modelo.value = "";
+  color.value = "";
+  placas.value = "";
+}
+
+function limpiarFormularioCobro() {
+  qrId.value = "";
+  chargeInfo.innerHTML = "";
+  confirmPaid.checked = false;
+  document.getElementById("confirmArea").classList.add("hidden");
 }
 
 async function createTicket() {
-  if (!placas.value.trim()) return alert("Placas obligatorias");
+  const datos = {
+    marca: marca.value,
+    modelo: modelo.value,
+    color: color.value,
+    placas: placas.value
+  };
 
   const res = await fetch(API + "/ticket", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      placas: placas.value,
-      marca: marca.value,
-      modelo: modelo.value,
-      color: color.value
-    })
+    body:JSON.stringify(datos)
   });
 
-  const { id } = await res.json();
+  const data = await res.json();
+  printTicket(data.id, datos);
+  limpiarFormularioNuevo(); // Limpia después de imprimir
+  newTicket.classList.add("hidden");
+}
 
-  const win = window.open("", "", "width=300,height=500");
+function printTicket(id, info) {
+  const win = window.open("", "", "width=300,height=600");
+  const d = new Date();
+  
   win.document.write(`
-    <h3>Estacionamiento Morelos</h3>
-    <canvas id="qr"></canvas>
-    <p>Placas: ${placas.value}</p>
-    <p>Marca: ${marca.value || "----"}</p>
-    <p>Modelo: ${modelo.value || "----"}</p>
-    <p>Color: ${color.value || "----"}</p>
+    <html>
+    <body style="font-family:monospace;text-align:center; padding: 20px;">
+      <h2 style="margin-bottom:0;">Estacionamiento</h2>
+      <p style="margin-top:0;">Morelos :)</p>
+      <canvas id="qr"></canvas>
+      <div style="text-align:left; margin-top:10px; font-size:12px;">
+        <p><strong>ID:</strong> ${id.substring(0,8)}</p>
+        <p><strong>Marca:</strong> ${info.marca || "----"}</p>
+        <p><strong>Modelo:</strong> ${info.modelo || "----"}</p>
+        <p><strong>Color:</strong> ${info.color || "----"}</p>
+        <p><strong>Placas:</strong> ${info.placas || "----"}</p>
+        <p><strong>Entrada:</strong> ${d.toLocaleTimeString()}</p>
+      </div>
+      <p>-------------------------</p>
+      <p>Guarde su boleto</p>
+    </body>
+    </html>
   `);
+  win.document.close();
 
-  QRCode.toCanvas(win.document.getElementById("qr"), id, () => {
+  QRCode.toCanvas(win.document.getElementById("qr"), id, { width: 150 }, () => {
     win.print();
     win.close();
   });
-
-  limpiarNuevo();
 }
 
 async function scanQr() {
-  const r = await fetch(API + "/ticket/" + qrId.value);
-  const d = await r.json();
+  if(!qrId.value) return;
+  const res = await fetch(API + "/ticket/" + qrId.value);
+  const data = await res.json();
 
-  if (d.error) return chargeInfo.innerText = d.error;
+  if (data.error) {
+    chargeInfo.innerHTML = `<p style="color:red">${data.error}</p>`;
+    document.getElementById("confirmArea").classList.add("hidden");
+    return;
+  }
 
+  // Mostrar todos los datos solicitados al leer el QR
   chargeInfo.innerHTML = `
-    <p>Placas: ${d.placas}</p>
-    <p>Hora entrada: ${d.horaEntrada}</p>
-    <div class="total">$${d.monto}</div>
+    <div style="border-top:1px solid #ccc; margin-top:10px; padding-top:10px;">
+      <p><strong>Placas:</strong> ${data.placas || "----"}</p>
+      <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
+      <p><strong>Salida (Estimada):</strong> ${new Date().toLocaleTimeString('es-MX')}</p>
+      <p>Precio a cobrar:</p>
+      <div class="total">$${data.monto}.00</div>
+    </div>
   `;
+  document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
-  if (!confirmPaid.checked) return alert("Marca cobrado");
+  if (!confirmPaid.checked) return alert("Debe marcar la casilla de 'Confirmar Cobro'");
 
-  const r = await fetch(API + "/pay/" + qrId.value, { method:"POST" });
-  const d = await r.json();
-
-  alert(
-    `Placas: ${d.placas}\n` +
-    `Entrada: ${d.horaEntrada}\n` +
-    `Salida: ${d.horaSalida}\n` +
-    `Total: $${d.monto}`
-  );
-
-  limpiarCobro();
+  const res = await fetch(API + "/pay/" + qrId.value, { method:"POST" });
+  const result = await res.json();
+  
+  alert(result.message + " - Total: $" + result.monto);
+  limpiarFormularioCobro();
+  payTicket.classList.add("hidden");
 }
 </script>
 </body>

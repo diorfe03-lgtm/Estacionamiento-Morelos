@@ -80,37 +80,39 @@ app.get("/ticket/:id", async (req, res) => {
 
   res.json({
     placas: t.placas,
-    horaEntrada: horaCDMX(t.hora_entrada),
+    hora_entrada_cdmx: horaCDMX(t.hora_entrada),
     monto: calcularMonto(t.hora_entrada)
   });
 });
 
 // 💰 CONFIRMAR PAGO
 app.post("/pay/:id", async (req, res) => {
-  const { data: t } = await supabase
+  const { data: ticket } = await supabase
     .from("tickets")
     .select("*")
     .eq("id", req.params.id)
     .single();
 
-  if (!t || t.cobrado) return res.json({ error: "No válido" });
+  if (!ticket) return res.status(404).json({ message: "No existe" });
+  if (ticket.cobrado) return res.json({ message: "Ya estaba cobrado" });
 
+  const monto = calcularMonto(ticket.hora_entrada);
   const now = new Date();
-  const monto = calcularMonto(t.hora_entrada);
 
-  await supabase.from("tickets")
+  const { error } = await supabase.from("tickets")
     .update({
       cobrado: true,
       hora_salida: now.toISOString(),
-      monto
+      monto: monto
     })
     .eq("id", req.params.id);
 
+  if (error) return res.status(500).json({ error: "Error al registrar pago" });
+
   res.json({
-    placas: t.placas,
-    horaEntrada: horaCDMX(t.hora_entrada),
-    horaSalida: horaCDMX(now.toISOString()),
-    monto
+    message: "Pago registrado correctamente",
+    monto,
+    hora_salida_cdmx: horaCDMX(now.toISOString())
   });
 });
 
