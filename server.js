@@ -2,32 +2,30 @@ const express = require("express");
 const cors = require("cors");
 const { v4: uuid } = require("uuid");
 const { createClient } = require("@supabase/supabase-js");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // 🔑 SUPABASE
-const SUPABASE_URL = "https://rxsxuwpivsnsdozmblsv.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4c3h1d3BpdnNuc2Rvem1ibHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNTI0MzcsImV4cCI6MjA4MTkyODQzN30.jbhP5pnBO1b6HddmB1VdxHH-xzSkskt9jjxNpoNLbcA";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 🧮 FUNCIÓN ÚNICA DE COBRO (LA VERDADERA)
+// 🧮 FUNCIÓN ÚNICA DE COBRO
 function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
   const now = new Date();
-
   const diffMs = now - entrada;
   const totalMinutes = Math.ceil(diffMs / 60000);
-
   let monto = 15;
-
   if (totalMinutes > 60) {
     const extraMinutes = totalMinutes - 60;
     const bloques20 = Math.ceil(extraMinutes / 20);
     monto += bloques20 * 5;
   }
-
   return monto;
 }
 
@@ -64,16 +62,10 @@ app.get("/ticket/:id", async (req, res) => {
     .eq("id", req.params.id)
     .single();
 
-  if (error || !ticket) {
-    return res.json({ error: "Boleto no existe" });
-  }
-
-  if (ticket.cobrado) {
-    return res.json({ error: "Este boleto ya fue cobrado" });
-  }
+  if (error || !ticket) return res.json({ error: "Boleto no existe" });
+  if (ticket.cobrado) return res.json({ error: "Este boleto ya fue cobrado" });
 
   const monto = calcularMonto(ticket.hora_entrada);
-
   res.json({ ...ticket, monto });
 });
 
@@ -85,23 +77,14 @@ app.post("/pay/:id", async (req, res) => {
     .eq("id", req.params.id)
     .single();
 
-  if (!ticket) {
-    return res.json({ message: "No existe" });
-  }
-
-  if (ticket.cobrado) {
-    return res.json({ message: "Ya estaba cobrado" });
-  }
+  if (!ticket) return res.json({ message: "No existe" });
+  if (ticket.cobrado) return res.json({ message: "Ya estaba cobrado" });
 
   const monto = calcularMonto(ticket.hora_entrada);
   const now = new Date();
 
   await supabase.from("tickets")
-    .update({
-      cobrado: true,
-      hora_salida: now.toISOString(),
-      monto
-    })
+    .update({ cobrado: true, hora_salida: now.toISOString(), monto })
     .eq("id", req.params.id);
 
   res.json({ message: "Pago registrado correctamente", monto });
@@ -116,14 +99,17 @@ app.get("/total/:fecha", async (req, res) => {
     .eq("cobrado", true);
 
   const total = data.reduce((sum, t) => sum + Number(t.monto), 0);
-
-  res.json({
-    fecha: req.params.fecha,
-    total,
-    boletos: data.length
-  });
+  res.json({ fecha: req.params.fecha, total, boletos: data.length });
 });
 
-app.listen(3000, () => {
-  console.log("✅ Servidor con Supabase activo en http://localhost:3000");
+// 🌐 SERVIR FRONTEND
+app.use(express.static(path.join(__dirname, "public"))); // carpeta 'public' para index.html
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Servidor activo en el puerto ${PORT}`);
 });
