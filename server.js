@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔑 SUPABASE - Asegúrate de tener estas variables en tu entorno
+// 🔑 SUPABASE
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
@@ -41,23 +41,29 @@ function calcularMonto(horaEntrada) {
 
   let monto = 15; // Primera hora
   if (mins > 60) {
-    monto += Math.ceil((mins - 60) / 20) * 5; // Fracción de 20 min
+    monto += Math.ceil((mins - 60) / 20) * 5;
   }
   return monto;
 }
 
-// ➕ CREAR BOLETO
+// ➕ CREAR BOLETO (Placas obligatorias)
 app.post("/ticket", async (req, res) => {
+  const { placas, marca, modelo, color } = req.body;
+
+  if (!placas || placas.trim() === "") {
+    return res.status(400).json({ error: "Las placas son obligatorias" });
+  }
+
   const id = uuid();
   const now = new Date();
 
   const { error } = await supabase.from("tickets").insert([{
     id,
     fecha: fechaCDMX(now),
-    placas: req.body.placas || "----",
-    marca: req.body.marca || "----",
-    modelo: req.body.modelo || "----",
-    color: req.body.color || "----",
+    placas: placas.trim(),
+    marca: marca || "----",
+    modelo: modelo || "----",
+    color: color || "----",
     hora_entrada: now.toISOString(),
     cobrado: false
   }]);
@@ -66,7 +72,7 @@ app.post("/ticket", async (req, res) => {
   res.json({ id });
 });
 
-// 🔍 CONSULTAR BOLETO (Para cobrar)
+// 🔍 CONSULTAR BOLETO
 app.get("/ticket/:id", async (req, res) => {
   const { data: t, error } = await supabase
     .from("tickets")
@@ -86,30 +92,30 @@ app.get("/ticket/:id", async (req, res) => {
 
 // 💰 CONFIRMAR PAGO
 app.post("/pay/:id", async (req, res) => {
-  const { data: ticket } = await supabase
-    .from("tickets")
-    .select("*")
-    .eq("id", req.params.id)
-    .single();
-
+  const { data: ticket } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
   if (!ticket) return res.status(404).json({ message: "No existe" });
-  
+
   const monto = calcularMonto(ticket.hora_entrada);
   const now = new Date();
 
-  await supabase.from("tickets")
-    .update({
-      cobrado: true,
-      hora_salida: now.toISOString(),
-      monto: monto
-    })
-    .eq("id", req.params.id);
+  await supabase.from("tickets").update({
+    cobrado: true,
+    hora_salida: now.toISOString(),
+    monto: monto
+  }).eq("id", req.params.id);
 
   res.json({ message: "Pago registrado", monto });
 });
 
-// 📊 CORTE DE CAJA (Solo hoy)
-app.get("/corte-caja", async (req, res) => {
+// 📊 CORTE DE CAJA PROTEGIDO
+app.post("/corte-caja", async (req, res) => {
+  const { password } = req.body;
+  const PASSWORD_MAESTRA = "1234"; // 👈 Cambia tu contraseña aquí
+
+  if (password !== PASSWORD_MAESTRA) {
+    return res.status(401).json({ error: "Clave incorrecta" });
+  }
+
   const hoy = fechaCDMX();
   const { data, error } = await supabase
     .from("tickets")
@@ -118,13 +124,10 @@ app.get("/corte-caja", async (req, res) => {
     .eq("cobrado", true);
 
   if (error) return res.status(500).json({ error: "Error" });
-
   const total = data.reduce((sum, t) => sum + Number(t.monto), 0);
   res.json({ fecha: hoy, total, boletos: data.length });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/index.html")));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor listo"));
+app.listen(process.env.PORT || 3000, () => console.log("Servidor Activo"));

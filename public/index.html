@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Estacionamiento</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-
 <style>
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
   .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-  h2 { text-align: center; color:#2a5298; margin-bottom: 20px; }
-  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+  h2 { text-align: center; color:#2a5298; }
+  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; }
   .primary { background:#2a5298; color:white; }
   .secondary { background:#f1f5f9; color: #1e3c72; }
   .success { background:#16a34a; color:white; }
@@ -18,42 +17,38 @@
   .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; border: 1px solid #e2e8f0; }
   .hidden { display:none; }
   .total { font-size:24px; color:#16a34a; font-weight:bold; margin: 10px 0; }
-  .info-pago p { margin: 8px 0; font-size: 15px; color: #334155; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+  .info-pago p { margin: 8px 0; font-size: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
 </style>
 </head>
-
 <body>
 <div class="app">
   <h2>🚗 Estacionamiento</h2>
-  
   <button class="primary" onclick="showNew()">Nuevo boleto</button>
   <button class="secondary" onclick="showPay()">Cobrar Boleto</button>
 
   <div id="newTicket" class="card hidden">
+    <input placeholder="Placas (Obligatorio)" id="placas">
     <input placeholder="Marca" id="marca">
     <input placeholder="Modelo" id="modelo">
     <input placeholder="Color" id="color">
-    <input placeholder="Placas" id="placas">
     <button class="primary" onclick="createTicket()">Generar e Imprimir</button>
   </div>
 
   <div id="payTicket" class="card hidden">
-    <input placeholder="Escanea o escribe ID" id="qrId">
+    <input placeholder="ID del Boleto" id="qrId">
     <button class="secondary" onclick="scanQr()">Buscar Datos</button>
     <div id="chargeInfo" class="info-pago"></div>
     <div id="confirmArea" class="hidden">
-      <label style="display:block; margin: 15px 0; cursor:pointer;">
-        <input type="checkbox" id="confirmPaid"> Confirmar pago recibido
-      </label>
+      <label style="display:block; margin: 15px 0;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
       <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
     </div>
   </div>
 
   <div style="margin-top: 30px; border-top: 2px dashed #e2e8f0; padding-top: 10px;">
-    <button style="font-size: 13px; opacity: 0.8;" class="secondary" onclick="toggleCorte()">📊 Reporte del Día</button>
+    <button style="font-size: 13px;" class="secondary" onclick="toggleCorte()">📊 Reporte del Día</button>
     <div id="corteSection" class="card hidden">
-      <input type="password" id="adminPass" placeholder="Contraseña Admin">
-      <button class="primary" onclick="obtenerCorte()">Ver Total de Hoy</button>
+      <input type="password" id="adminPass" placeholder="Contraseña">
+      <button class="primary" onclick="obtenerCorte()">Consultar Caja</button>
       <div id="corteResultado"></div>
     </div>
   </div>
@@ -62,109 +57,73 @@
 <script>
 const API = window.location.origin;
 
-function showNew() {
-  newTicket.classList.remove("hidden");
-  payTicket.classList.add("hidden");
-  limpiarFormularioNuevo();
-}
-
-function showPay() {
-  payTicket.classList.remove("hidden");
-  newTicket.classList.add("hidden");
-  limpiarFormularioCobro();
-}
-
-function limpiarFormularioNuevo() {
-  marca.value = ""; modelo.value = ""; color.value = ""; placas.value = "";
-}
-
-function limpiarFormularioCobro() {
-  qrId.value = "";
-  chargeInfo.innerHTML = "";
-  confirmPaid.checked = false;
-  confirmArea.classList.add("hidden");
-}
+function showNew() { newTicket.classList.remove("hidden"); payTicket.classList.add("hidden"); limpiarNuevo(); }
+function showPay() { payTicket.classList.remove("hidden"); newTicket.classList.add("hidden"); limpiarCobro(); }
+function limpiarNuevo() { placas.value=""; marca.value=""; modelo.value=""; color.value=""; }
+function limpiarCobro() { qrId.value=""; chargeInfo.innerHTML=""; confirmPaid.checked=false; confirmArea.classList.add("hidden"); }
 
 async function createTicket() {
-  const datos = { marca: marca.value, modelo: modelo.value, color: color.value, placas: placas.value };
+  if (!placas.value.trim()) return alert("Las PLACAS son obligatorias.");
+  const info = { placas: placas.value, marca: marca.value, modelo: modelo.value, color: color.value };
   const res = await fetch(API + "/ticket", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify(datos)
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(info)
   });
   const data = await res.json();
-  printTicket(data.id, datos);
-  limpiarFormularioNuevo();
+  printTicket(data.id, info);
+  limpiarNuevo();
   newTicket.classList.add("hidden");
 }
 
 function printTicket(id, info) {
   const win = window.open("", "", "width=300,height=600");
-  const d = new Date();
-  win.document.write(`
-    <html><body style="font-family:monospace;text-align:center;padding:20px;">
-      <h3>ESTACIONAMIENTO</h3>
-      <canvas id="qr"></canvas>
-      <div style="text-align:left;font-size:12px;margin-top:10px;">
-        <p><strong>ID:</strong> ${id.substring(0,8)}</p>
-        <p><strong>Placas:</strong> ${info.placas || "----"}</p>
-        <p><strong>Marca:</strong> ${info.marca || "----"}</p>
-        <p><strong>Modelo:</strong> ${info.modelo || "----"}</p>
-        <p><strong>Color:</strong> ${info.color || "----"}</p>
-        <p><strong>Entrada:</strong> ${d.toLocaleTimeString()}</p>
-      </div>
-      <p>Guarde su boleto</p>
-    </body></html>
-  `);
+  win.document.write(`<html><body style="font-family:monospace;text-align:center;">
+    <h3>ESTACIONAMIENTO</h3><canvas id="qr"></canvas>
+    <div style="text-align:left;font-size:12px;margin:10px;">
+      <p><strong>Placas:</strong> ${info.placas}</p>
+      <p><strong>Marca:</strong> ${info.marca || "----"}</p>
+      <p><strong>Modelo:</strong> ${info.modelo || "----"}</p>
+      <p><strong>Color:</strong> ${info.color || "----"}</p>
+      <p><strong>Entrada:</strong> ${new Date().toLocaleTimeString()}</p>
+    </div>
+    <p>ID: ${id.substring(0,8)}</p>
+  </body></html>`);
   win.document.close();
-  QRCode.toCanvas(win.document.getElementById("qr"), id, { width: 160 }, () => {
-    win.print(); win.close();
-  });
+  QRCode.toCanvas(win.document.getElementById("qr"), id, { width: 160 }, () => { win.print(); win.close(); });
 }
 
 async function scanQr() {
-  if(!qrId.value) return;
   const res = await fetch(API + "/ticket/" + qrId.value);
   const data = await res.json();
-  if (data.error) {
-    chargeInfo.innerHTML = `<p style="color:red;">${data.error}</p>`;
-    confirmArea.classList.add("hidden");
-    return;
-  }
+  if (data.error) { chargeInfo.innerHTML = `<p style="color:red;">${data.error}</p>`; return; }
   chargeInfo.innerHTML = `
     <p><strong>Placa:</strong> ${data.placas}</p>
     <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
-    <p><strong>Salida:</strong> ${new Date().toLocaleTimeString('es-MX')}</p>
-    <p style="margin-top:10px;">PRECIO A COBRAR:</p>
-    <div class="total">$${data.monto}.00</div>
+    <p><strong>Precio a cobrar:</strong></p><div class="total">$${data.monto}.00</div>
   `;
   confirmArea.classList.remove("hidden");
 }
 
 async function confirmPayment() {
-  if (!confirmPaid.checked) return alert("Marca el cuadro de confirmación");
+  if (!confirmPaid.checked) return alert("Confirma el cobro en la casilla.");
   await fetch(API + "/pay/" + qrId.value, { method:"POST" });
-  alert("Pago registrado con éxito");
-  limpiarFormularioCobro();
+  alert("¡Cobro Exitoso!");
+  limpiarCobro();
   payTicket.classList.add("hidden");
 }
 
-function toggleCorte() {
-  corteSection.classList.toggle("hidden");
-  corteResultado.innerHTML = "";
-}
+function toggleCorte() { corteSection.classList.toggle("hidden"); corteResultado.innerHTML=""; }
 
 async function obtenerCorte() {
-  if (adminPass.value !== "KAtia1407.") return alert("Acceso denegado");
-  const res = await fetch(API + "/corte-caja");
+  const res = await fetch(API + "/corte-caja", {
+    method: "POST", headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ password: adminPass.value })
+  });
   const data = await res.json();
-  corteResultado.innerHTML = `
-    <div style="margin-top:10px; border-top: 1px solid #ccc;">
-      <p>Hoy: ${data.fecha}</p>
-      <p>Autos: ${data.boletos}</p>
-      <p class="total">Total: $${data.total}.00</p>
-    </div>
-  `;
+  if (res.status === 401) return alert("Clave Incorrecta");
+  corteResultado.innerHTML = `<div style="margin-top:10px;border-top:1px solid #ccc;">
+    <p>Fecha: ${data.fecha}</p><p>Boletos: ${data.boletos}</p><p class="total">Total: $${data.total}.00</p>
+  </div>`;
 }
 </script>
 </body>
