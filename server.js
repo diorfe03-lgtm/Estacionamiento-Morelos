@@ -8,19 +8,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔑 SUPABASE
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// 🔑 CONFIGURACIÓN DE SUPABASE
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
-// 🕒 UTILIDADES DE FECHA (CDMX)
+// 🕒 UTILIDADES DE FECHA Y HORA (CDMX)
 function fechaCDMX(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "America/Mexico_City",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(date); // YYYY-MM-DD
+  }).format(date);
 }
 
 function horaCDMX(iso) {
@@ -29,129 +30,122 @@ function horaCDMX(iso) {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    hour12: true
   });
 }
 
-// 🧮 FUNCIÓN DE COBRO
-function calcularMonto(horaEntrada) {
-  const entrada = new Date(horaEntrada); // UTC
-  const now = new Date();                // UTC
-  const diffMs = now - entrada;
-  const totalMinutes = Math.ceil(diffMs / 60000);
+// 🧮 LÓGICA DE COBRO Y TIEMPO
+function calcularDetalleCobro(horaEntrada) {
+  const entrada = new Date(horaEntrada);
+  const ahora = new Date();
+  const diffMs = (ahora - entrada);
+  const minsTotales = Math.ceil(diffMs / 60000);
 
+  // Regla: 15 pesos la primera hora, luego 5 pesos por cada 20 min adicionales
   let monto = 15;
-  if (totalMinutes > 60) {
-    const extraMinutes = totalMinutes - 60;
-    const bloques20 = Math.ceil(extraMinutes / 20);
-    monto += bloques20 * 5;
+  if (minsTotales > 60) {
+    monto += Math.ceil((minsTotales - 60) / 20) * 5;
   }
-  return monto;
+
+  const horasDisp = Math.floor(minsTotales / 60);
+  const minsDisp = minsTotales % 60;
+
+  return {
+    monto,
+    tiempo: `${horasDisp}h ${minsDisp}m`,
+    ahoraISO: ahora.toISOString()
+  };
 }
 
-// ➕ CREAR BOLETO
+// --- RUTAS DEL API ---
+
+// ➕ 1. CREAR NUEVO BOLETO
 app.post("/ticket", async (req, res) => {
+  const { placas, marca, modelo, color } = req.body;
+
+  if (!placas?.trim()) {
+    return res.status(400).json({ error: "Las placas son obligatorias" });
+  }
+
   const id = uuid();
   const now = new Date();
 
   const { error } = await supabase.from("tickets").insert([{
     id,
-    fecha: fechaCDMX(now),           // 👈 FECHA CDMX
-    marca: req.body.marca || "",
-    modelo: req.body.modelo || "",
-    color: req.body.color || "",
-    placas: req.body.placas || "",
-    hora_entrada: now.toISOString(), // 👈 UTC
+    fecha: fechaCDMX(now),
+    placas: placas.trim().toUpperCase(),
+    marca: marca?.trim() || "----",
+    modelo: modelo?.trim() || "----",
+    color: color?.trim() || "----",
+    hora_entrada: now.toISOString(),
     cobrado: false
   }]);
 
-  if (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Error al crear boleto" });
-  }
-
+  if (error) return res.status(500).json({ error: error.message });
+  
   res.json({ id });
 });
 
-// 🔍 CONSULTAR BOLETO + COBRO
+// 🔍 2. CONSULTAR BOLETO (Para el Front de cobro)
 app.get("/ticket/:id", async (req, res) => {
-  const { data: ticket, error } = await supabase
+  const { data: t, error } = await supabase
     .from("tickets")
     .select("*")
     .eq("id", req.params.id)
     .single();
 
-  if (error || !ticket) return res.json({ error: "Boleto no existe" });
-  if (ticket.cobrado) return res.json({ error: "Este boleto ya fue cobrado" });
+  if (error || !t) return res.status(404).json({ error: "Boleto no encontrado" });
+  if (t.cobrado) return res.status(400).json({ error: "Este boleto ya fue pagado" });
 
-  const monto = calcularMonto(ticket.hora_entrada);
+  const detalle = calcularDetalleCobro(t.hora_entrada);
 
   res.json({
-    ...ticket,
-    monto,
-    hora_entrada_cdmx: horaCDMX(ticket.hora_entrada) // 👈 PARA MOSTRAR
+    placas: t.placas,
+    horaEntrada: horaCDMX(t.hora_entrada),
+    monto: detalle.monto,
+    tiempo: detalle.tiempo
   });
 });
 
-// 💰 CONFIRMAR PAGO
+// 💰 3. CONFIRMAR PAGO Y SALIDA
 app.post("/pay/:id", async (req, res) => {
-  const { data: ticket } = await supabase
+  const { data: t } = await supabase
     .from("tickets")
     .select("*")
     .eq("id", req.params.id)
     .single();
 
-  if (!ticket) return res.json({ message: "No existe" });
-  if (ticket.cobrado) return res.json({ message: "Ya estaba cobrado" });
+  if (!t || t.cobrado) return res.status(400).json({ error: "Transacción no válida" });
 
-  const monto = calcularMonto(ticket.hora_entrada);
-  const now = new Date();
+  const detalle = calcularDetalleCobro(t.hora_entrada);
 
-  await supabase.from("tickets")
+  const { error } = await supabase.from("tickets")
     .update({
       cobrado: true,
-      hora_salida: now.toISOString(), // UTC
-      monto
+      hora_salida: detalle.ahoraISO,
+      monto: detalle.monto
     })
     .eq("id", req.params.id);
 
+  if (error) return res.status(500).json({ error: "Error al procesar pago" });
+
   res.json({
-    message: "Pago registrado correctamente",
-    monto,
-    hora_salida_cdmx: horaCDMX(now.toISOString())
+    placas: t.placas,
+    horaEntrada: horaCDMX(t.hora_entrada),
+    horaSalida: horaCDMX(detalle.ahoraISO),
+    monto: detalle.monto
   });
 });
 
-// 📊 TOTAL POR DÍA (CDMX)
-app.get("/total/:fecha", async (req, res) => {
-  const { data = [] } = await supabase
-    .from("tickets")
-    .select("monto")
-    .eq("fecha", req.params.fecha)
-    .eq("cobrado", true);
-
-  const total = data.reduce((sum, t) => sum + Number(t.monto), 0);
-
-  res.json({
-    fecha: req.params.fecha,
-    total,
-    boletos: data.length
-  });
-});
-
-// 🌐 SERVIR FRONTEND
+// 🌐 SERVIR FRONTEND (Archivos estáticos)
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+
+app.get("/", (_, res) => {
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-// 🚀 SERVER
+// INICIO DEL SERVIDOR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Servidor activo en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
-
-// Ping 
-app.get("/ping", (req, res) => {
-  res.status(200).send("pong");
-});
-
