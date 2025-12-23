@@ -59,34 +59,76 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Formato Markdown especial para RawBT
-    // # = Título Grande, ## = Título Medio, ** = Negrita, [C] = Centrar
-    let t = "";
-    t += "[C]# ESTACIONAMIENTO\n";
-    t += "[C]## MORELOS 322\n";
-    t += "[C]Comalcalco, Tabasco\n";
-    t += "[C]--------------------------------\n";
-    t += "[C]### PLACAS:\n";
-    t += "[C]# " + info.placas.toUpperCase() + "\n";
-    t += "[C]--------------------------------\n";
-    t += "**MARCA:** " + (info.marca || "---") + "\n";
-    t += "**MODELO:** " + (info.modelo || "---") + "\n";
-    t += "**COLOR:** " + (info.color || "---") + "\n";
-    t += "**ENTRADA:** " + fechaActual + "\n";
-    t += "[C]--------------------------------\n";
-    t += "[C]**HORARIO: 8:30AM - 7:30PM**\n";
-    t += "[C]No nos hacemos responsables\n";
-    t += "[C]por robo o daños.\n";
-    t += "[C]**CONSERVE SU BOLETO**\n";
-    t += "[C]--------------------------------\n";
-    t += "[C]<qrcode>" + id + "</qrcode>\n";
-    t += "\n\n\n\n"; 
+    // 1. Crear el contenedor del ticket (Visible solo un milisegundo)
+    const container = document.createElement('div');
+    container.style.width = '300px'; 
+    container.style.padding = '20px';
+    container.style.background = 'white';
+    container.style.color = 'black';
+    container.style.position = 'fixed';
+    container.style.left = '0';
+    container.style.top = '0';
+    container.style.zIndex = '9999';
+    container.style.textAlign = 'center';
+    container.style.fontFamily = 'Arial, sans-serif';
 
-    // IMPORTANTE: Codificación limpia
-    const base64Text = btoa(unescape(encodeURIComponent(t)));
-    
-    // Usamos el esquema 'vnd.rawbt.title' que obliga a RawBT a procesar el formato
-    window.location.href = "rawbt:data:text/plain;base64," + base64Text;
+    container.innerHTML = `
+        <div id="print-area" style="background:white; padding:10px;">
+            <b style="font-size: 22px; display: block;">ESTACIONAMIENTO</b>
+            <b style="font-size: 20px; display: block;">MORELOS 322</b>
+            <span style="font-size: 14px;">Comalcalco, Tabasco</span><br>
+            <div id="qrcode-box" style="margin: 15px auto; display: inline-block;"></div>
+            <div style="border-top: 2px solid black; border-bottom: 2px solid black; margin: 10px 0; padding: 5px;">
+                <span style="font-size: 16px;">PLACAS:</span><br>
+                <b style="font-size: 48px; line-height: 1;">${info.placas.toUpperCase()}</b>
+            </div>
+            <div style="text-align: left; font-size: 18px; line-height: 1.4;">
+                <b>MARCA:</b> ${info.marca || '---'}<br>
+                <b>MODELO:</b> ${info.modelo || '---'}<br>
+                <b>COLOR:</b> ${info.color || '---'}<br>
+                <b>ENTRADA:</b> ${fechaActual}
+            </div>
+            <div style="border: 2px solid black; margin: 15px 0; padding: 10px; font-weight: bold; font-size: 16px;">
+                HORARIO: 8:30 AM A 7:30 PM
+            </div>
+            <p style="font-size: 12px; text-align: justify;">
+                AVISO: No nos hacemos responsables por robo total o parcial, ni por objetos de valor.
+            </p>
+            <b style="font-size: 16px;">¡CONSERVE SU BOLETO!</b>
+            <div style="height:50px;"></div>
+        </div>
+    `;
+    document.body.appendChild(container);
+
+    // 2. Generar el QR dentro del div (Usamos la librería que ya tienes)
+    new QRCode(document.getElementById("qrcode-box"), {
+        text: id,
+        width: 150,
+        height: 150,
+        correctLevel: QRCode.CorrectLevel.M
+    });
+
+    // 3. Esperar a que el QR se dibuje y tomar la captura
+    setTimeout(() => {
+        html2canvas(container, {
+            scale: 2, // Mayor nitidez
+            backgroundColor: "#ffffff",
+            logging: false,
+            useCORS: true
+        }).then(canvas => {
+            // Convertir a JPEG (es más ligero para el buffer de la impresora que PNG)
+            const imgData = canvas.toDataURL("image/jpeg", 0.8);
+            const base64Data = imgData.split(',')[1];
+            
+            // EL TRUCO FINAL: Usar el esquema image/jpeg directo
+            const rawbtUrl = "rawbt:data:image/jpeg;base64," + base64Data;
+            
+            window.location.href = rawbtUrl;
+
+            // Limpiar el rastro
+            document.body.removeChild(container);
+        });
+    }, 500); 
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
