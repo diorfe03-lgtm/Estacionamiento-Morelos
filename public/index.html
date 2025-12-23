@@ -60,29 +60,41 @@ const API = window.location.origin;
 let html5QrCode;
 
 function enviarARawBT(id, info, horaServidor) {
-  const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
+  const dateObj = new Date(horaServidor);
+  const fechaOficial = dateObj.toLocaleString('es-MX', { 
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
   });
 
   const ticketHTML = `
-    <div style="width: 350px; font-family: Arial; text-align: center; color: black; background: white;">
-      <b style="font-size: 24px;">ESTACIONAMIENTO</b><br>
-      <b style="font-size: 24px;">MORELOS 322</b><br>
-      <span style="font-size: 15px;">Morelos y Escobedo Centro, Comalcalco</span><br>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" /><br>
-      <div style="border: 3px solid black; margin: 5px 10px;">
-        <span style="font-size: 20px;">PLACAS:</span><br>
-        <b style="font-size: 44px;">${info.placas.toUpperCase()}</b>
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 10px;">
+      <b style="font-size: 22px;">ESTACIONAMIENTO</b><br>
+      <b style="font-size: 22px;">MORELOS 322</b><br>
+      <span style="font-size: 14px;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span><br>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="180" height="180" style="margin: 10px 0;" /><br>
+      <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0; margin-bottom: 5px;">
+        <span style="font-size: 18px;">PLACAS:</span><br>
+        <b style="font-size: 40px;">${info.placas.toUpperCase()}</b>
       </div>
-      <div style="text-align: left; margin: 10px; font-size: 18px;">
-        <b>MARCA:</b> ${info.marca || '---'}<br>
-        <b>COLOR:</b> ${info.color || '---'}<br>
-        <b>ENTRADA:</b> ${fechaOficial}
+      <div style="text-align: left; margin: 5px; font-size: 17px; line-height: 1.2;">
+        <b>MARCA:</b> ${info.marca.trim() || '--'}<br>
+        <b>MODELO:</b> ${info.modelo.trim() || '--'}<br>
+        <b>COLOR:</b> ${info.color.trim() || '--'}
       </div>
-      <div style="margin: 10px; font-size: 16px; border: 1px solid black; padding: 5px;">
-        HORARIO: 8:30 AM A 7:30 PM
+      <div style="border-top: 1px dashed black; margin: 10px 0;"></div>
+      <div style="text-align: left; margin: 5px; font-size: 17px;">
+        <b>ENTRADA:</b> ${fechaOficial}<br>
+        <b>SALIDA:</b> POR DEFINIR
       </div>
-      <p style="font-size: 11px; margin: 10px;">No nos hacemos responsables por robos o daños.</p>
+      <div style="margin: 10px 0; border: 1px solid black; padding: 5px;">
+        <b style="font-size: 16px;">HORARIO DE SERVICIO:</b><br>
+        <span style="font-size: 18px;">8:30 AM A 7:30 PM</span>
+      </div>
+      <p style="font-size: 11px; text-align: justify; line-height: 1.1; margin: 10px 0;">
+        <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
+      </p>
+      <div style="font-size: 15px; font-weight: bold; margin-top: 10px;">
+        CONSERVE SU BOLETO<br>¡GRACIAS POR SU PREFERENCIA!
+      </div>
     </div>
   `;
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
@@ -96,7 +108,7 @@ function enviarARawBT(id, info, horaServidor) {
 async function createTicket() {
   const p = document.getElementById("placas").value;
   if (!p.trim()) return alert("Placas obligatorias");
-  const info = { placas: p, marca: document.getElementById("marca").value, color: document.getElementById("color").value };
+  const info = { placas: p, marca: document.getElementById("marca").value, modelo: document.getElementById("modelo").value, color: document.getElementById("color").value };
   const res = await fetch(API + "/ticket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(info) });
   const data = await res.json();
   enviarARawBT(data.id, info, data.hora_entrada);

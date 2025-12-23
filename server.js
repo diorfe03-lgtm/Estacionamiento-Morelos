@@ -68,7 +68,7 @@ app.post("/corte-caja", async (req, res) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// RUTA SIMPLIFICADA PARA EVITAR EL ERROR DE RENDER
+// Esta ruta simplificada es la única que Render (Node 22) no rechazará
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
