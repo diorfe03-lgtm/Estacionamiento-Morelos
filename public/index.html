@@ -22,6 +22,7 @@
 </style>
 </head>
 <body>
+
 <div class="app">
   <h2>🚗 Estacionamiento</h2>
   
@@ -53,70 +54,105 @@
 const API = window.location.origin;
 let html5QrCode;
 
+// --- TU FUNCIÓN DE IMPRESIÓN CON EL DISEÑO QUE TE GUSTA ---
 function enviarARawBT(id, info) {
   const fechaActual = new Date().toLocaleString('es-MX', { 
     hour: '2-digit', minute: '2-digit', day: '2-digit', 
     month: '2-digit', year: 'numeric', hour12: true 
   });
 
-  // TU DISEÑO FAVORITO
+  // DISEÑO XL CON DIRECCIÓN Y LEYENDA LEGAL
   const ticketHTML = `
-    <div style="width: 320px; font-family: sans-serif; text-align: center; color: black; background: white; padding: 10px;">
-      <b style="font-size: 22px; display: block;">ESTACIONAMIENTO</b>
-      <b style="font-size: 22px; display: block;">MORELOS 322</b>
-      <span style="font-size: 14px;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
       
-      <div style="margin: 10px auto;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
-      </div>
-
-      <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin: 10px 0;">
-        <span style="font-size: 18px;">PLACAS:</span><br>
-        <b style="font-size: 45px; line-height: 1;">${info.placas.toUpperCase()}</b>
+      <div style="margin-bottom: 5px;">
+        <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
+        <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
+        <span style="font-size: 15px; display: block; line-height: 1.1;">
+          Morelos y Escobedo Centro<br>
+          Comalcalco, Tabasco
+        </span>
       </div>
       
-      <div style="text-align: left; font-size: 18px;">
-        <b>MARCA:</b> ${info.marca || '---'}<br>
-        <b>MODELO:</b> ${info.modelo || '---'}<br>
-        <b>COLOR:</b> ${info.color || '---'}<br>
-        <b>ENTRADA:</b> ${fechaActual}
+      <div style="margin: 5px auto;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="display: block; margin: auto;" />
       </div>
 
-      <div style="margin: 15px 0; font-size: 16px; border: 2px solid black; padding: 5px; font-weight: bold;">
-        HORARIO: 8:30 AM A 7:30 PM
+      <div style="text-align: left; margin: 5px 10px;">
+        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
+          <b style="font-size: 20px;">PLACAS:</b>
+          <b style="font-size: 44px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
+        </div>
+        
+        <div style="font-size: 19px; line-height: 1.2;">
+          <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
+          <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
+          <b>COLOR:</b> ${info.color.trim() || '---'}
+        </div>
+        
+        <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
+        
+        <div style="font-size: 18px;">
+          <b>ENTRADA:</b> ${fechaActual}<br>
+          <b>SALIDA:</b> POR DEFINIR
+        </div>
+      </div>
+
+      <div style="margin: 10px; font-size: 17px; border: 2px solid black; padding: 6px; font-weight: bold;">
+        HORARIO DE SERVICIO:<br>
+        8:30 AM A 7:30 PM
       </div>
       
-      <p style="font-size: 11px; text-align: justify; margin: 10px 0;">
-        <b>AVISO:</b> No nos hacemos responsables por robo total o parcial, ni por objetos de valor.
-      </p>
+      <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
+        <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
+      </div>
 
-      <b style="font-size: 14px;">¡CONSERVE SU BOLETO!</b>
-      <div style="height: 40px;"></div>
+      <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">
+        CONSERVE SU BOLETO<br>
+        ¡GRACIAS POR SU PREFERENCIA!
+      </div>
     </div>
   `;
 
-  // Limpieza de código para evitar el error "Wrong base64"
-  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').trim();
+  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
-  
-  // Cambio clave: Enviamos directamente por URL (más estable que el iframe)
-  window.location.href = "rawbt:data:text/html;base64," + base64Html;
+  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
+
+  // Acción instantánea sin retrasos
+  let iframe = document.getElementById('hidden-print-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'hidden-print-iframe';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
+  iframe.src = rawbtUrl;
 }
 
-// FUNCIONES RESTANTES (Sin cambios)
+// --- FUNCIONES DE LÓGICA DE LA APP ---
 async function createTicket() {
   const p = document.getElementById("placas").value;
   if (!p.trim()) return alert("Placas obligatorias");
-  const info = { placas: p, marca: document.getElementById("marca").value, modelo: document.getElementById("modelo").value, color: document.getElementById("color").value };
+  const info = { 
+    placas: p, 
+    marca: document.getElementById("marca").value, 
+    modelo: document.getElementById("modelo").value, 
+    color: document.getElementById("color").value 
+  };
   try {
-    const res = await fetch(API + "/ticket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(info) });
+    const res = await fetch(API + "/ticket", { 
+      method:"POST", 
+      headers:{"Content-Type":"application/json"}, 
+      body: JSON.stringify(info) 
+    });
     const data = await res.json();
     enviarARawBT(data.id, info);
+    // Limpiar campos
     document.getElementById("placas").value="";
     document.getElementById("marca").value="";
     document.getElementById("modelo").value="";
     document.getElementById("color").value="";
-  } catch(e) { alert("Error al conectar"); }
+  } catch(e) { alert("Error al conectar con el servidor"); }
 }
 
 function startScanner() {
@@ -126,30 +162,54 @@ function startScanner() {
       document.getElementById("qrId").value = text;
       stopScanner();
       scanQr(); 
-  }).catch(e => alert(e));
+  }).catch(e => alert("Error cámara: " + e));
 }
 
-function stopScanner() { if (html5QrCode) html5QrCode.stop().then(() => document.getElementById("reader").classList.add("hidden")); }
+function stopScanner() { 
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      document.getElementById("reader").classList.add("hidden");
+    });
+  }
+}
 
 async function scanQr() {
   const id = document.getElementById("qrId").value;
   if(!id) return;
   const res = await fetch(API + "/ticket/" + id);
   const data = await res.json();
-  if (data.error) { document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`; return; }
-  document.getElementById("chargeInfo").innerHTML = `<div class="card"><p>Placa: <b>${data.placas}</b></p><p class="total">$${data.monto}.00</p></div>`;
+  if (data.error) { 
+    document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`; 
+    return; 
+  }
+  document.getElementById("chargeInfo").innerHTML = `
+    <div class="card">
+      <p>Placa: <b>${data.placas}</b></p>
+      <p class="total">$${data.monto}.00</p>
+    </div>`;
   document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
-  if (!document.getElementById("confirmPaid").checked) return alert("Confirma el cobro");
+  if (!document.getElementById("confirmPaid").checked) return alert("Por favor confirma el cobro");
   await fetch(API + "/pay/" + document.getElementById("qrId").value, { method:"POST" });
   alert("Pago registrado correctamente");
-  showPay();
+  showPay(); // Resetear vista
 }
 
-function showNew() { document.getElementById("newTicket").classList.remove("hidden"); document.getElementById("payTicket").classList.add("hidden"); }
-function showPay() { document.getElementById("payTicket").classList.remove("hidden"); document.getElementById("newTicket").classList.add("hidden"); }
+function showNew() { 
+  document.getElementById("newTicket").classList.remove("hidden"); 
+  document.getElementById("payTicket").classList.add("hidden"); 
+}
+
+function showPay() { 
+  document.getElementById("payTicket").classList.remove("hidden"); 
+  document.getElementById("newTicket").classList.add("hidden"); 
+  document.getElementById("qrId").value = "";
+  document.getElementById("chargeInfo").innerHTML = "";
+  document.getElementById("confirmArea").classList.add("hidden");
+}
 </script>
+
 </body>
 </html>
