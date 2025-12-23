@@ -70,38 +70,33 @@ let html5QrCode;
 // --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
   const fechaActual = new Date().toLocaleString('es-MX', { 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric',
-    hour12: true 
+    hour: '2-digit', minute: '2-digit', day: '2-digit', 
+    month: '2-digit', year: 'numeric', hour12: true 
   });
 
-  // DISEÑO SIN ESPACIOS EXTRAS Y CON MARGEN INFERIOR AJUSTADO
+  // DISEÑO ULTRA COMPACTO PARA MINIMIZAR EL ESPACIO DE LA APP
   const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px; margin: 0; overflow: hidden;">
-      
-      <b style="font-size: 24px; display: block; margin-bottom: 2px;">ESTACIONAMIENTO</b>
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0; display: inline-block;">
+      <b style="font-size: 24px; display: block; margin-top: 5px;">ESTACIONAMIENTO</b>
       <span style="font-size: 18px; display: block;">MORELOS :)</span>
       
-      <div style="margin: 8px auto;">
+      <div style="margin: 5px auto; height: 180px;">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${id}" width="180" height="180" />
       </div>
 
-      <div style="text-align: left; margin: 0 5px;">
-        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0; margin-bottom: 8px;">
+      <div style="text-align: left; margin: 0 10px;">
+        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0; margin-bottom: 5px;">
           <b style="font-size: 20px;">PLACAS:</b> 
           <b style="font-size: 28px; float: right;">${info.placas.toUpperCase()}</b>
           <div style="clear: both;"></div>
         </div>
         
-        <div style="font-size: 17px; line-height: 1.2;">
+        <div style="font-size: 17px; line-height: 1.1;">
           <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
           <b>MOD:</b> ${info.modelo.trim() || '---'} | <b>COL:</b> ${info.color.trim() || '---'}
         </div>
         
-        <div style="border-top: 1px dashed black; margin: 10px 0;"></div>
+        <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
         
         <div style="font-size: 17px;">
           <b>ENTRADA:</b> ${fechaActual}<br>
@@ -109,23 +104,22 @@ function enviarARawBT(id, info) {
         </div>
       </div>
 
-      <div style="margin-top: 12px; font-size: 16px; border: 2px solid black; padding: 6px; font-weight: bold;">
+      <div style="margin-top: 10px; font-size: 16px; border: 2px solid black; padding: 5px; font-weight: bold; margin-left: 10px; margin-right: 10px;">
         HORARIO: 8:30 AM A 7:30 PM
       </div>
       
-      <div style="font-size: 14px; margin-top: 12px; margin-bottom: -10px; padding-bottom: 0;">
+      <div style="font-size: 14px; margin-top: 10px; margin-bottom: 0;">
         CONSERVE SU BOLETO<br>
         ¡GRACIAS POR SU PREFERENCIA!
       </div>
     </div>
   `;
 
-  // Limpieza de código
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
   const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
 
-  // --- AGREGAMOS EL RETRASO DE 1 SEGUNDO (1000ms) ---
+  // Reducido a 2 segundos (tiempo suficiente para el QR)
   setTimeout(() => {
     let iframe = document.getElementById('hidden-print-iframe');
     if (!iframe) {
@@ -135,7 +129,7 @@ function enviarARawBT(id, info) {
       document.body.appendChild(iframe);
     }
     iframe.src = rawbtUrl;
-  }, 1000); 
+  }, 10000); 
 }
 
 function startScanner() {
