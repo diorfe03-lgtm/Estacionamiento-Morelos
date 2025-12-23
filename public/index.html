@@ -54,81 +54,53 @@ const API = window.location.origin;
 let html5QrCode;
 
 function enviarARawBT(id, info) {
-    const fechaActual = new Date().toLocaleString('es-MX', { 
-        hour: '2-digit', minute: '2-digit', day: '2-digit', 
-        month: '2-digit', year: 'numeric', hour12: true 
-    });
+  const fechaActual = new Date().toLocaleString('es-MX', { 
+    hour: '2-digit', minute: '2-digit', day: '2-digit', 
+    month: '2-digit', year: 'numeric', hour12: true 
+  });
 
-    // 1. Crear el contenedor del ticket (Visible solo un milisegundo)
-    const container = document.createElement('div');
-    container.style.width = '300px'; 
-    container.style.padding = '20px';
-    container.style.background = 'white';
-    container.style.color = 'black';
-    container.style.position = 'fixed';
-    container.style.left = '0';
-    container.style.top = '0';
-    container.style.zIndex = '9999';
-    container.style.textAlign = 'center';
-    container.style.fontFamily = 'Arial, sans-serif';
+  // TU DISEÑO FAVORITO
+  const ticketHTML = `
+    <div style="width: 320px; font-family: sans-serif; text-align: center; color: black; background: white; padding: 10px;">
+      <b style="font-size: 22px; display: block;">ESTACIONAMIENTO</b>
+      <b style="font-size: 22px; display: block;">MORELOS 322</b>
+      <span style="font-size: 14px;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
+      
+      <div style="margin: 10px auto;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
+      </div>
 
-    container.innerHTML = `
-        <div id="print-area" style="background:white; padding:10px;">
-            <b style="font-size: 22px; display: block;">ESTACIONAMIENTO</b>
-            <b style="font-size: 20px; display: block;">MORELOS 322</b>
-            <span style="font-size: 14px;">Comalcalco, Tabasco</span><br>
-            <div id="qrcode-box" style="margin: 15px auto; display: inline-block;"></div>
-            <div style="border-top: 2px solid black; border-bottom: 2px solid black; margin: 10px 0; padding: 5px;">
-                <span style="font-size: 16px;">PLACAS:</span><br>
-                <b style="font-size: 48px; line-height: 1;">${info.placas.toUpperCase()}</b>
-            </div>
-            <div style="text-align: left; font-size: 18px; line-height: 1.4;">
-                <b>MARCA:</b> ${info.marca || '---'}<br>
-                <b>MODELO:</b> ${info.modelo || '---'}<br>
-                <b>COLOR:</b> ${info.color || '---'}<br>
-                <b>ENTRADA:</b> ${fechaActual}
-            </div>
-            <div style="border: 2px solid black; margin: 15px 0; padding: 10px; font-weight: bold; font-size: 16px;">
-                HORARIO: 8:30 AM A 7:30 PM
-            </div>
-            <p style="font-size: 12px; text-align: justify;">
-                AVISO: No nos hacemos responsables por robo total o parcial, ni por objetos de valor.
-            </p>
-            <b style="font-size: 16px;">¡CONSERVE SU BOLETO!</b>
-            <div style="height:50px;"></div>
-        </div>
-    `;
-    document.body.appendChild(container);
+      <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin: 10px 0;">
+        <span style="font-size: 18px;">PLACAS:</span><br>
+        <b style="font-size: 45px; line-height: 1;">${info.placas.toUpperCase()}</b>
+      </div>
+      
+      <div style="text-align: left; font-size: 18px;">
+        <b>MARCA:</b> ${info.marca || '---'}<br>
+        <b>MODELO:</b> ${info.modelo || '---'}<br>
+        <b>COLOR:</b> ${info.color || '---'}<br>
+        <b>ENTRADA:</b> ${fechaActual}
+      </div>
 
-    // 2. Generar el QR dentro del div (Usamos la librería que ya tienes)
-    new QRCode(document.getElementById("qrcode-box"), {
-        text: id,
-        width: 150,
-        height: 150,
-        correctLevel: QRCode.CorrectLevel.M
-    });
+      <div style="margin: 15px 0; font-size: 16px; border: 2px solid black; padding: 5px; font-weight: bold;">
+        HORARIO: 8:30 AM A 7:30 PM
+      </div>
+      
+      <p style="font-size: 11px; text-align: justify; margin: 10px 0;">
+        <b>AVISO:</b> No nos hacemos responsables por robo total o parcial, ni por objetos de valor.
+      </p>
 
-    // 3. Esperar a que el QR se dibuje y tomar la captura
-    setTimeout(() => {
-        html2canvas(container, {
-            scale: 2, // Mayor nitidez
-            backgroundColor: "#ffffff",
-            logging: false,
-            useCORS: true
-        }).then(canvas => {
-            // Convertir a JPEG (es más ligero para el buffer de la impresora que PNG)
-            const imgData = canvas.toDataURL("image/jpeg", 0.8);
-            const base64Data = imgData.split(',')[1];
-            
-            // EL TRUCO FINAL: Usar el esquema image/jpeg directo
-            const rawbtUrl = "rawbt:data:image/jpeg;base64," + base64Data;
-            
-            window.location.href = rawbtUrl;
+      <b style="font-size: 14px;">¡CONSERVE SU BOLETO!</b>
+      <div style="height: 40px;"></div>
+    </div>
+  `;
 
-            // Limpiar el rastro
-            document.body.removeChild(container);
-        });
-    }, 500); 
+  // Limpieza de código para evitar el error "Wrong base64"
+  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').trim();
+  const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
+  
+  // Cambio clave: Enviamos directamente por URL (más estable que el iframe)
+  window.location.href = "rawbt:data:text/html;base64," + base64Html;
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
