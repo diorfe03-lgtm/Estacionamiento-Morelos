@@ -59,52 +59,70 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Definición de comandos ESC/POS (Hexadecimal)
-    const ESC = '\x1B';
-    const GS  = '\x1D';
-    const JUST_CENTER = ESC + 'a' + '\x01';
-    const JUST_LEFT   = ESC + 'a' + '\x00';
-    const BOLD_ON     = ESC + 'E' + '\x01';
-    const BOLD_OFF    = ESC + 'E' + '\x00';
-    const SIZE_BIG    = GS  + '!' + '\x11'; // Doble alto y ancho
-    const SIZE_NORMAL = GS  + '!' + '\x00';
+    // Crear un canvas para "dibujar" el ticket
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const width = 384; // Ancho estándar para impresoras de 58mm
+    canvas.width = width;
+    canvas.height = 650; // Altura estimada
 
-    // Construcción del ticket con comandos reales
-    let t = "";
-    
-    // Encabezado
-    t += JUST_CENTER + BOLD_ON + SIZE_BIG + "ESTACIONAMIENTO" + "\n";
-    t += "MORELOS 322" + "\n" + SIZE_NORMAL;
-    t += "Comalcalco, Tabasco" + "\n";
-    t += "--------------------------------" + "\n";
-    
-    // Placas
-    t += "PLACAS:" + "\n";
-    t += BOLD_ON + SIZE_BIG + info.placas.toUpperCase() + "\n" + SIZE_NORMAL + BOLD_OFF;
-    t += "--------------------------------" + "\n";
-    
-    // Datos del vehículo
-    t += JUST_LEFT;
-    t += "MARCA: " + (info.marca || "---") + "\n";
-    t += "MODELO: " + (info.modelo || "---") + "\n";
-    t += "COLOR: " + (info.color || "---") + "\n";
-    t += "ENTRADA: " + fechaActual + "\n";
-    
-    t += JUST_CENTER + "--------------------------------" + "\n";
-    t += BOLD_ON + "HORARIO: 8:30AM - 7:30PM" + BOLD_OFF + "\n";
-    t += "No nos hacemos responsables\npor robo o daños.\n";
-    t += BOLD_ON + "CONSERVE SU BOLETO" + BOLD_OFF + "\n";
-    t += "--------------------------------" + "\n\n";
+    // Fondo blanco
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'black';
+    ctx.textAlign = 'center';
 
-    // Comando para Código QR (Estándar ESC/POS)
-    // RawBT intercepta esta etiqueta específica si el modo texto falla
-    t += "[C]<qrcode size='10'>" + id + "</qrcode>\n";
-    
-    t += "\n\n\n\n"; 
+    // Dibujar Texto
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText("ESTACIONAMIENTO", width/2, 40);
+    ctx.font = 'bold 25px Arial';
+    ctx.fillText("MORELOS 322", width/2, 75);
+    ctx.font = '20px Arial';
+    ctx.fillText("Comalcalco, Tabasco", width/2, 105);
+    ctx.fillText("------------------------------------------", width/2, 130);
 
-    // Enviamos como binario para que la impresora ejecute los comandos
-    const base64Data = btoa(unescape(encodeURIComponent(t)));
-    window.location.href = "rawbt:data:application/octet-stream;base64," + base64Data;
+    ctx.fillText("PLACAS:", width/2, 160);
+    ctx.font = 'bold 50px Arial';
+    ctx.fillText(info.placas.toUpperCase(), width/2, 210);
+    ctx.font = '20px Arial';
+    ctx.fillText("------------------------------------------", width/2, 240);
+
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 22px Arial';
+    let y = 280;
+    ctx.fillText("MARCA: " + (info.marca || "---"), 20, y);
+    ctx.fillText("MODELO: " + (info.modelo || "---"), 20, y + 35);
+    ctx.fillText("COLOR: " + (info.color || "---"), 20, y + 70);
+    ctx.font = '20px Arial';
+    ctx.fillText("ENTRADA: " + fechaActual, 20, y + 105);
+
+    ctx.textAlign = 'center';
+    ctx.fillText("------------------------------------------", width/2, y + 140);
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText("HORARIO: 8:30AM - 7:30PM", width/2, y + 175);
+    ctx.font = '18px Arial';
+    ctx.fillText("No nos hacemos responsables", width/2, y + 210);
+    ctx.fillText("por robo o daños.", width/2, y + 235);
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText("CONSERVE SU BOLETO", width/2, y + 270);
+
+    // Generar el QR visualmente (usando Google Charts para asegurar que sea imagen)
+    const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${id}&choe=UTF-8`;
+    const imgQr = new Image();
+    imgQr.crossOrigin = "anonymous";
+    imgQr.src = qrUrl;
+
+    imgQr.onload = function() {
+        ctx.drawImage(imgQr, (width/2) - 75, y + 290, 150, 150);
+        
+        // Convertir el canvas a imagen Base64 limpia
+        const dataUrl = canvas.toDataURL('image/png');
+        const base64Image = dataUrl.split(',')[1];
+
+        // ENVIAR A RAWBT COMO IMAGEN
+        // Usamos la URL que RawBT espera para imágenes puras
+        window.location.href = "rawbt:data:image/png;base64," + base64Image;
+    };
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
