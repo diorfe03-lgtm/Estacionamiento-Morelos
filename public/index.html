@@ -19,7 +19,7 @@
   input { width:100%; padding:12px; margin:6px 0; border-radius:10px; border:1px solid #ccc; box-sizing: border-box; font-size: 16px; }
   .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; border: 1px solid #e2e8f0; }
   .hidden { display:none; }
-  .total { font-size:24px; color:#16a34a; font-weight:bold; }
+  .total { font-size:28px; color:#16a34a; font-weight:bold; }
   #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-top: 10px; }
 </style>
 </head>
@@ -48,7 +48,7 @@
     <div id="chargeInfo" class="info-pago"></div>
     
     <div id="confirmArea" class="hidden">
-      <label style="display:block; margin: 15px 0;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
+      <label style="display:block; margin: 15px 0; font-size: 18px;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
       <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
     </div>
   </div>
@@ -67,49 +67,46 @@
 const API = window.location.origin;
 let html5QrCode;
 
-// --- LÓGICA DE IMPRESIÓN (RAWBT) ---
+// --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
-  const fecha = new Date().toLocaleString('es-MX');
+  const fecha = new Date().toLocaleString('es-MX', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
   
-  // Diseño ultra-limpio para evitar que RawBT lo confunda con texto plano
+  // Diseño con fuentes grandes (28px - 35px)
   const ticketHTML = `
-    <div style="width:200px; font-family:monospace; text-align:center;">
-      <h3 style="margin:0;">ESTACIONAMIENTO</h3>
-      <p style="margin:0;">MORELOS :)</p>
+    <div style="width:100%; font-family:monospace; text-align:center;">
+      <h1 style="margin:0; font-size:35px;">ESTACIONAMIENTO</h1>
+      <h2 style="margin:0; font-size:30px;">MORELOS :)</h2>
       <br>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" />
       <br><br>
-      <div style="text-align:left; font-size:14px;">
-        <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
-        <b>MARCA:</b> ${info.marca || "----"}<br>
-        <b>ENTRADA:</b> ${fecha}<br>
-        <b>ID:</b> ${id.substring(0,8)}
+      <div style="text-align:left; font-size:28px; line-height:1.2;">
+        <b>PLACAS:</b> <span style="font-size:38px;">${info.placas.toUpperCase()}</span><br>
+        <b>MARCA:</b> ${info.marca.toUpperCase() || "---"}<br>
+        <b>HORA:</b> ${fecha}<br>
       </div>
-      <p>----------------------</p>
-      <p>Guarde su boleto</p>
+      <p style="font-size:25px;">------------------</p>
+      <p style="font-size:24px; font-weight:bold;">CONSERVE SU BOLETO</p>
       <br><br>
     </div>
   `;
 
-  // El truco final: usar un "Data URI" dentro del esquema de RawBT
-  // Esto le dice a la app: "Lo que viene es una página HTML completa"
   const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
+  // Nota: RawBT procesará esto y si tienes activado "Auto-print" en la app, saldrá directo.
   window.location.href = "rawbt:data:text/html;base64," + base64Html;
 }
 
-// --- LÓGICA DEL ESCÁNER (CÁMARA) ---
 function startScanner() {
   document.getElementById("reader").classList.remove("hidden");
   html5QrCode = new Html5Qrcode("reader");
   html5QrCode.start(
     { facingMode: "environment" }, 
-    { fps: 10, qrbox: { width: 250, height: 250 } },
+    { fps: 15, qrbox: { width: 250, height: 250 } },
     (decodedText) => {
       document.getElementById("qrId").value = decodedText;
       stopScanner();
-      scanQr(); // Busca los datos automáticamente al detectar el QR
+      scanQr(); 
     },
-    (errorMessage) => { /* buscando... */ }
+    (errorMessage) => { }
   ).catch(err => alert("Error de cámara: " + err));
 }
 
@@ -117,14 +114,20 @@ function stopScanner() {
   if (html5QrCode) {
     html5QrCode.stop().then(() => {
       document.getElementById("reader").classList.add("hidden");
-    });
+    }).catch(() => {});
   }
 }
 
-// --- FUNCIONES PRINCIPALES ---
 async function createTicket() {
-  if (!placas.value.trim()) return alert("Las PLACAS son obligatorias.");
-  const info = { placas: placas.value, marca: marca.value, modelo: modelo.value, color: color.value };
+  const p = document.getElementById("placas").value;
+  if (!p.trim()) return alert("Placas obligatorias");
+  
+  const info = { 
+    placas: p, 
+    marca: document.getElementById("marca").value, 
+    modelo: document.getElementById("modelo").value, 
+    color: document.getElementById("color").value 
+  };
   
   const res = await fetch(API + "/ticket", {
     method:"POST", headers:{"Content-Type":"application/json"},
@@ -132,7 +135,7 @@ async function createTicket() {
   });
   const data = await res.json();
   
-  enviarARawBT(data.id, info); // Envía a la impresora térmica
+  enviarARawBT(data.id, info);
   limpiarNuevo();
 }
 
@@ -150,11 +153,10 @@ async function scanQr() {
   }
 
   document.getElementById("chargeInfo").innerHTML = `
-    <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+    <div style="margin-top:10px; border-top:2px solid #eee; padding-top:10px; font-size:20px;">
       <p><strong>Placa:</strong> ${data.placas}</p>
       <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
-      <p><strong>Salida:</strong> ${data.hora_salida_cdmx || new Date().toLocaleTimeString()}</p>
-      <p>Precio a cobrar:</p>
+      <p>Total a pagar:</p>
       <div class="total">$${data.monto}.00</div>
     </div>
   `;
@@ -163,27 +165,27 @@ async function scanQr() {
 
 async function confirmPayment() {
   const idBuscado = document.getElementById("qrId").value;
-  if (!confirmPaid.checked) return alert("Confirma el cobro.");
+  if (!document.getElementById("confirmPaid").checked) return alert("Confirma el cobro.");
   
   await fetch(API + "/pay/" + idBuscado, { method:"POST" });
   alert("¡Pago registrado!");
-  showPay(); // Resetea la vista
+  showPay();
 }
 
-// Auxiliares
-function showNew() { newTicket.classList.remove("hidden"); payTicket.classList.add("hidden"); stopScanner(); }
-function showPay() { payTicket.classList.remove("hidden"); newTicket.classList.add("hidden"); limpiarCobro(); }
-function limpiarNuevo() { placas.value=""; marca.value=""; modelo.value=""; color.value=""; }
-function limpiarCobro() { qrId.value=""; chargeInfo.innerHTML=""; confirmPaid.checked=false; confirmArea.classList.add("hidden"); stopScanner(); }
-function toggleCorte() { corteSection.classList.toggle("hidden"); }
+function showNew() { document.getElementById("newTicket").classList.remove("hidden"); document.getElementById("payTicket").classList.add("hidden"); stopScanner(); }
+function showPay() { document.getElementById("payTicket").classList.remove("hidden"); document.getElementById("newTicket").classList.add("hidden"); limpiarCobro(); }
+function limpiarNuevo() { document.getElementById("placas").value=""; document.getElementById("marca").value=""; document.getElementById("modelo").value=""; document.getElementById("color").value=""; }
+function limpiarCobro() { document.getElementById("qrId").value=""; document.getElementById("chargeInfo").innerHTML=""; document.getElementById("confirmPaid").checked=false; document.getElementById("confirmArea").classList.add("hidden"); stopScanner(); }
+function toggleCorte() { document.getElementById("corteSection").classList.toggle("hidden"); }
+
 async function obtenerCorte() {
   const res = await fetch(API + "/corte-caja", {
     method: "POST", headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ password: adminPass.value })
+    body: JSON.stringify({ password: document.getElementById("adminPass").value })
   });
   const data = await res.json();
   if (res.status === 401) return alert("Clave Incorrecta");
-  document.getElementById("corteResultado").innerHTML = `<p class="total">Total de hoy: $${data.total}.00</p><p>Boletos: ${data.boletos}</p>`;
+  document.getElementById("corteResultado").innerHTML = `<p class="total">Hoy: $${data.total}.00</p><p>Boletos: ${data.boletos}</p>`;
 }
 </script>
 </body>
