@@ -59,70 +59,68 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Crear un canvas para "dibujar" el ticket
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const width = 384; // Ancho estándar para impresoras de 58mm
-    canvas.width = width;
-    canvas.height = 650; // Altura estimada
+    // 1. Crear un contenedor temporal para diseñar el ticket con HTML/CSS
+    const ticketVirtual = document.createElement('div');
+    ticketVirtual.style.width = '350px';
+    ticketVirtual.style.padding = '10px';
+    ticketVirtual.style.background = 'white';
+    ticketVirtual.style.color = 'black';
+    ticketVirtual.style.textAlign = 'center';
+    ticketVirtual.style.fontFamily = 'monospace';
 
-    // Fondo blanco
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'black';
-    ctx.textAlign = 'center';
+    ticketVirtual.innerHTML = `
+        <h2 style="margin:0; font-size:24px;">ESTACIONAMIENTO</h2>
+        <h3 style="margin:0; font-size:18px;">MORELOS 322</h3>
+        <p style="margin:2px; font-size:14px;">Comalcalco, Tabasco</p>
+        <p>--------------------------------</p>
+        <p style="margin:0; font-size:16px;">PLACAS:</p>
+        <h1 style="margin:5px 0; font-size:45px; font-weight:bold;">${info.placas.toUpperCase()}</h1>
+        <p>--------------------------------</p>
+        <div style="text-align:left; font-size:16px; font-weight:bold;">
+            MARCA: ${info.marca || "---"}<br>
+            MODELO: ${info.modelo || "---"}<br>
+            COLOR: ${info.color || "---"}<br>
+            ENTRADA: ${fechaActual}
+        </div>
+        <p>--------------------------------</p>
+        <p style="font-weight:bold; margin:2px;">HORARIO: 8:30AM - 7:30PM</p>
+        <p style="font-size:12px; margin:0;">No nos hacemos responsables por robo o daños.</p>
+        <p style="font-weight:bold;">CONSERVE SU BOLETO</p>
+        <p>--------------------------------</p>
+        <div id="qr-dest" style="display:flex; justify-content:center; padding:10px;"></div>
+        <br><br>
+    `;
 
-    // Dibujar Texto
-    ctx.font = 'bold 30px Arial';
-    ctx.fillText("ESTACIONAMIENTO", width/2, 40);
-    ctx.font = 'bold 25px Arial';
-    ctx.fillText("MORELOS 322", width/2, 75);
-    ctx.font = '20px Arial';
-    ctx.fillText("Comalcalco, Tabasco", width/2, 105);
-    ctx.fillText("------------------------------------------", width/2, 130);
+    // 2. Añadirlo al body oculto para que el navegador lo renderice
+    ticketVirtual.style.position = 'absolute';
+    ticketVirtual.style.top = '-9999px';
+    document.body.appendChild(ticketVirtual);
 
-    ctx.fillText("PLACAS:", width/2, 160);
-    ctx.font = 'bold 50px Arial';
-    ctx.fillText(info.placas.toUpperCase(), width/2, 210);
-    ctx.font = '20px Arial';
-    ctx.fillText("------------------------------------------", width/2, 240);
+    // 3. Usar una librería de QR simple o un texto si no quieres fallos
+    // Para asegurar que salga ALGO ahora mismo, usaremos el ID en texto grande
+    const qrDest = ticketVirtual.querySelector('#qr-dest');
+    qrDest.innerHTML = `<b style="font-size:12px;">ID: ${id}</b>`;
 
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 22px Arial';
-    let y = 280;
-    ctx.fillText("MARCA: " + (info.marca || "---"), 20, y);
-    ctx.fillText("MODELO: " + (info.modelo || "---"), 20, y + 35);
-    ctx.fillText("COLOR: " + (info.color || "---"), 20, y + 70);
-    ctx.font = '20px Arial';
-    ctx.fillText("ENTRADA: " + fechaActual, 20, y + 105);
+    // 4. Convertir ese HTML en imagen usando una técnica nativa (SVG ForeignObject)
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="350" height="650">
+            <foreignObject width="100%" height="100%">
+                <div xmlns="http://www.w3.org/1999/xhtml">
+                    ${ticketVirtual.innerHTML}
+                </div>
+            </foreignObject>
+        </svg>
+    `;
 
-    ctx.textAlign = 'center';
-    ctx.fillText("------------------------------------------", width/2, y + 140);
-    ctx.font = 'bold 22px Arial';
-    ctx.fillText("HORARIO: 8:30AM - 7:30PM", width/2, y + 175);
-    ctx.font = '18px Arial';
-    ctx.fillText("No nos hacemos responsables", width/2, y + 210);
-    ctx.fillText("por robo o daños.", width/2, y + 235);
-    ctx.font = 'bold 22px Arial';
-    ctx.fillText("CONSERVE SU BOLETO", width/2, y + 270);
+    const base64Image = btoa(unescape(encodeURIComponent(svg)));
+    
+    // 5. Enviar a RawBT (Cambiamos el esquema para forzar la app)
+    const rawbtUrl = "rawbt:data:image/svg+xml;base64," + base64Image;
+    
+    window.location.href = rawbtUrl;
 
-    // Generar el QR visualmente (usando Google Charts para asegurar que sea imagen)
-    const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${id}&choe=UTF-8`;
-    const imgQr = new Image();
-    imgQr.crossOrigin = "anonymous";
-    imgQr.src = qrUrl;
-
-    imgQr.onload = function() {
-        ctx.drawImage(imgQr, (width/2) - 75, y + 290, 150, 150);
-        
-        // Convertir el canvas a imagen Base64 limpia
-        const dataUrl = canvas.toDataURL('image/png');
-        const base64Image = dataUrl.split(',')[1];
-
-        // ENVIAR A RAWBT COMO IMAGEN
-        // Usamos la URL que RawBT espera para imágenes puras
-        window.location.href = "rawbt:data:image/png;base64," + base64Image;
-    };
+    // Limpiar
+    document.body.removeChild(ticketVirtual);
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
