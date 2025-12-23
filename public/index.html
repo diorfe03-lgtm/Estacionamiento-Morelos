@@ -88,7 +88,7 @@ function enviarARawBT(id, info) {
     const base64Text = btoa(utf8Text);
     
     // Cambiamos a text/plain que es el que tu impresora aceptó antes
-    window.location.href = "rawbt:data:text/plain;base64," + base64Text;
+    window.location.href = "rawbt:data:text/html;base64," + base64Text;
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
