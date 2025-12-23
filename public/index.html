@@ -54,12 +54,12 @@
 const API = window.location.origin;
 let html5QrCode;
 
+// MODIFICADO: Ahora recibe 'horaServidor' y NO usa new Date() del celular
 function enviarARawBT(id, info, horaServidor) {
-  // Usamos la hora que nos mandó el servidor, formateada a México
-  const fechaActualOficial = new Date(horaServidor).toLocaleString('es-MX', { 
+  const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
     hour: '2-digit', minute: '2-digit', day: '2-digit', 
     month: '2-digit', year: 'numeric', hour12: true,
-    timeZone: 'America/Mexico_City'
+    timeZone: 'America/Mexico_City' 
   });
 
   const ticketHTML = `
@@ -84,7 +84,7 @@ function enviarARawBT(id, info, horaServidor) {
         </div>
         <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
         <div style="font-size: 18px;">
-          <b>ENTRADA:</b> ${fechaActualOficial}<br>
+          <b>ENTRADA:</b> ${fechaOficial}<br>
           <b>SALIDA:</b> POR DEFINIR
         </div>
       </div>
@@ -128,8 +128,10 @@ async function createTicket() {
       body: JSON.stringify(info) 
     });
     const data = await res.json();
-    // Pasamos el ID, la info y LA HORA QUE REGRESA EL SERVIDOR
+    
+    // IMPORTANTE: Se envía data.hora_entrada que viene del server
     enviarARawBT(data.id, info, data.hora_entrada);
+
     document.getElementById("placas").value="";
     document.getElementById("marca").value="";
     document.getElementById("modelo").value="";

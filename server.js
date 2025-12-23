@@ -13,7 +13,6 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
-// UTILIDADES DE FECHA
 function fechaCDMX(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "America/Mexico_City",
@@ -28,31 +27,25 @@ function horaCDMX(iso) {
   });
 }
 
-// LÓGICA DE COBRO CON TOLERANCIA DE 10 MINUTOS
 function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
   const ahora = new Date(); 
   const minsTotales = Math.floor((ahora - entrada) / 60000);
   
-  if (minsTotales <= 70) {
-    return 15; // Base: 1 hora + 10 min de gracia
-  }
+  if (minsTotales <= 70) return 15;
 
-  // Restamos los 70 mins base y calculamos bloques de 20 mins
-  // El salto ocurre al minuto 71, 91, 111, etc.
   const minsExcedentes = minsTotales - 70;
   const bloquesExtra = Math.ceil(minsExcedentes / 20);
   
   return 15 + (bloquesExtra * 5);
 }
 
-// CREAR BOLETO (Devuelve la hora oficial del servidor)
 app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
 
   const id = uuid();
-  const now = new Date();
+  const now = new Date(); // HORA OFICIAL DEL SERVIDOR
 
   const { data, error } = await supabase.from("tickets").insert([{
     id,
@@ -61,11 +54,11 @@ app.post("/ticket", async (req, res) => {
     marca, modelo, color,
     hora_entrada: now.toISOString(),
     cobrado: false
-  }]).select();
+  }]).select(); // IMPORTANTE: Pedimos el dato insertado
 
   if (error) return res.status(500).json({ error: "Error DB" });
   
-  // Enviamos el id y la hora_entrada generada por el servidor
+  // Enviamos al cliente la hora que grabó el servidor
   res.json({ id: data[0].id, hora_entrada: data[0].hora_entrada });
 });
 
