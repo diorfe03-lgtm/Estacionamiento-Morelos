@@ -69,7 +69,6 @@ let html5QrCode;
 
 // --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
-  // Obtenemos la hora de entrada formateada
   const fechaActual = new Date().toLocaleString('es-MX', { 
     hour: '2-digit', 
     minute: '2-digit', 
@@ -78,77 +77,47 @@ function enviarARawBT(id, info) {
     year: 'numeric',
     hour12: true 
   });
-  
-  // Contenido del Ticket con todos los datos y políticas
+
+  // Diseño optimizado para el motor de RawBT
   const ticketHTML = `
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        body { 
-          font-family: 'Courier New', Courier, monospace; 
-          width: 80mm; 
-          margin: 0; 
-          padding: 5px; 
-          text-align: center; 
-          color: #000;
-        }
-        .header h2 { margin: 5px 0; font-size: 18px; }
-        .qr-container { margin: 10px 0; }
-        .details { text-align: left; font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
-        .divider { border-top: 1px dashed #000; margin: 10px 0; }
-        .footer { font-size: 11px; font-weight: bold; }
-        @media print {
-          @page { margin: 0; }
-          body { margin: 5mm; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h2>ESTACIONAMIENTO</h2>
-        <p style="margin:0;">MORELOS :)</p>
+    <div style="width:100%; font-family:monospace; text-align:center; padding:0; margin:0;">
+      <h2 style="margin:0; font-size:22px;">ESTACIONAMIENTO</h2>
+      <p style="margin:0; font-size:16px;">MORELOS :)</p>
+      
+      <div style="margin:10px 0;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
       </div>
 
-      <div class="qr-container">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="140" height="140" />
-        <p style="font-size: 10px; margin: 2px;">ID: ${id.substring(0,8)}</p>
-      </div>
-
-      <div class="details">
+      <div style="text-align:left; font-size:15px; margin-left:10px;">
         <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
         <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
         <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
         <b>COLOR:</b> ${info.color.trim() || '---'}<br>
-        <div class="divider"></div>
+        <hr style="border:none; border-top:1px dashed #000;">
         <b>ENTRADA:</b> ${fechaActual}<br>
         <b>SALIDA:</b> POR DEFINIR
       </div>
 
-      <div class="divider"></div>
-      
-      <div class="footer">
-        <p>HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM</p>
-        <p>POR FAVOR CONSERVE SU BOLETO<br>NO NOS HACEMOS RESPONSABLES POR OBJETOS PERSONALES DEJADOS EN EL VEHÍCULO</p>
-        <p>¡GRACIAS POR SU PREFERENCIA!</p>
+      <div style="margin-top:10px; font-size:12px; font-weight:bold;">
+        <p style="margin:2px;">HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM</p>
+        <p style="margin:5px;">CONSERVE SU BOLETO - NO OBJETOS PERSONALES</p>
+        <p style="margin:2px;">¡GRACIAS POR SU PREFERENCIA!</p>
       </div>
-
-      <script>
-        // Auto-impresión al cargar
-        window.onload = function() {
-          window.print();
-          // Opcional: cerrar la ventana automáticamente después de imprimir
-          // window.onafterprint = function() { window.close(); };
-        };
-      <\/script>
-    </body>
-    </html>
+    </div>
   `;
 
-  // Abrir ventana emergente
-  const ventanaImpresion = window.open('', '_blank', 'width=450,height=650');
-  ventanaImpresion.document.write(ticketHTML);
-  ventanaImpresion.document.close();
+  // 1. Limpiamos el HTML para evitar caracteres extraños en la codificación
+  const cleanHtml = ticketHTML.replace(/\s+/g, ' ').trim();
+  
+  // 2. Codificamos correctamente a Base64
+  // Usamos btoa(unescape(encodeURIComponent())) para manejar caracteres latinos (ñ, acentos)
+  const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
+  
+  // 3. Llamada directa al protocolo de RawBT
+  // El parámetro &auto=1 intenta imprimir sin confirmar si RawBT está configurado así
+  const url = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
+  
+  window.location.href = url;
 }
 
 function startScanner() {
