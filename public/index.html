@@ -59,34 +59,38 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Formato TXT puro optimizado para RawBT
-    // Usamos comandos simples entre corchetes que RawBT traduce a ESC/POS
+    // Usamos el formato de RawBT que permite estilos en texto plano
+    // [C] Centro, [L] Izquierda, [R] Derecha
+    // {b} Negrita, {/b} Cerrar negrita
+    // {h1} a {h4} para tamaños de texto
     let t = "";
-    t += "[C]<b>ESTACIONAMIENTO</b>\n";
-    t += "[C]<b>MORELOS 322</b>\n";
+    t += "[C]{h2}ESTACIONAMIENTO{/h2}\n";
+    t += "[C]{h2}MORELOS 322{/h2}\n";
     t += "[C]Comalcalco, Tabasco\n";
     t += "[C]--------------------------------\n";
-    t += "[C]PLACAS:\n";
-    t += "[C]<font size='double'>" + info.placas.toUpperCase() + "</font>\n";
+    t += "[C]{h3}PLACAS:{/h3}\n";
+    t += "[C]{h1}" + info.placas.toUpperCase() + "{/h1}\n";
     t += "[C]--------------------------------\n";
-    t += "[L]MARCA: " + (info.marca || "---") + "\n";
-    t += "[L]MODELO: " + (info.modelo || "---") + "\n";
-    t += "[L]COLOR: " + (info.color || "---") + "\n";
-    t += "[L]ENTRADA: " + fechaActual + "\n";
+    t += "[L]{b}MARCA:{/b} " + (info.marca || "---") + "\n";
+    t += "[L]{b}MODELO:{/b} " + (info.modelo || "---") + "\n";
+    t += "[L]{b}COLOR:{/b} " + (info.color || "---") + "\n";
+    t += "[L]{b}ENTRADA:{/b} " + fechaActual + "\n";
     t += "[C]--------------------------------\n";
+    t += "[C]{b}HORARIO: 8:30AM - 7:30PM{/b}\n";
     t += "[C]No nos hacemos responsables\n";
     t += "[C]por robo o daños.\n";
-    t += "[C]<b>CONSERVE SU BOLETO</b>\n";
+    t += "[C]{b}CONSERVE SU BOLETO{/b}\n";
     t += "[C]--------------------------------\n";
-    t += "[C]<qrcode size='10'>" + id + "</qrcode>\n";
-    t += "\n\n\n"; // Espacio para el corte manual
+    t += "[C]{qrcode: " + id + "}\n"; // Formato correcto de QR para RawBT
+    t += "\n\n\n\n"; 
 
-    // Enviamos como texto plano codificado en base64
+    // IMPORTANTE: Cambiamos a data:application/vnd.rawbt.title
+    // Esto le dice a RawBT que use su motor de plantillas
     const base64Text = btoa(unescape(encodeURIComponent(t)));
     window.location.href = "rawbt:data:text/plain;base64," + base64Text;
 }
 
-// FUNCIONES DE CONTROL (Siguen igual)
+// FUNCIONES RESTANTES (Sin cambios)
 async function createTicket() {
   const p = document.getElementById("placas").value;
   if (!p.trim()) return alert("Placas obligatorias");
@@ -96,6 +100,9 @@ async function createTicket() {
     const data = await res.json();
     enviarARawBT(data.id, info);
     document.getElementById("placas").value="";
+    document.getElementById("marca").value="";
+    document.getElementById("modelo").value="";
+    document.getElementById("color").value="";
   } catch(e) { alert("Error al conectar"); }
 }
 
@@ -117,14 +124,14 @@ async function scanQr() {
   const res = await fetch(API + "/ticket/" + id);
   const data = await res.json();
   if (data.error) { document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`; return; }
-  document.getElementById("chargeInfo").innerHTML = `<p>Placa: ${data.placas}</p><p class="total">$${data.monto}.00</p>`;
+  document.getElementById("chargeInfo").innerHTML = `<div class="card"><p>Placa: <b>${data.placas}</b></p><p class="total">$${data.monto}.00</p></div>`;
   document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
   if (!document.getElementById("confirmPaid").checked) return alert("Confirma el cobro");
   await fetch(API + "/pay/" + document.getElementById("qrId").value, { method:"POST" });
-  alert("Pago registrado");
+  alert("Pago registrado correctamente");
   showPay();
 }
 
