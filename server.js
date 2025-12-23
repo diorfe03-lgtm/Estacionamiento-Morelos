@@ -4,7 +4,6 @@ const { v4: uuid } = require("uuid");
 const { createClient } = require("@supabase/supabase-js");
 const path = require("path");
 
-// FUERZA LA HORA DE MÉXICO EN EL SERVIDOR
 process.env.TZ = "America/Mexico_City";
 
 const app = express();
@@ -27,31 +26,21 @@ function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
   const ahora = new Date(); 
   const minsTotales = Math.floor((ahora - entrada) / 60000);
-  
   if (minsTotales <= 70) return 15;
-
   const minsExcedentes = minsTotales - 70;
   const bloquesExtra = Math.ceil(minsExcedentes / 20);
-  
   return 15 + (bloquesExtra * 5);
 }
 
 app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
-
   const id = uuid();
   const now = new Date(); 
-
   const { data, error } = await supabase.from("tickets").insert([{
-    id,
-    fecha: fechaCDMX(now),
-    placas: placas.trim(),
-    marca, modelo, color,
-    hora_entrada: now.toISOString(),
-    cobrado: false
+    id, fecha: fechaCDMX(now), placas: placas.trim(),
+    marca, modelo, color, hora_entrada: now.toISOString(), cobrado: false
   }]).select();
-
   if (error) return res.status(500).json({ error: "Error DB" });
   res.json({ id: data[0].id, hora_entrada: now.getTime() });
 });
@@ -60,44 +49,30 @@ app.get("/ticket/:id", async (req, res) => {
   const { data: t, error } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
   if (error || !t) return res.json({ error: "No encontrado" });
   if (t.cobrado) return res.json({ error: "Ya fue cobrado" });
-
-  res.json({
-    placas: t.placas,
-    monto: calcularMonto(t.hora_entrada)
-  });
+  res.json({ placas: t.placas, monto: calcularMonto(t.hora_entrada) });
 });
 
 app.post("/pay/:id", async (req, res) => {
   const { data: t } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
   const monto = calcularMonto(t.hora_entrada);
   await supabase.from("tickets").update({
-    cobrado: true,
-    hora_salida: new Date().toISOString(),
-    monto: monto
+    cobrado: true, hora_salida: new Date().toISOString(), monto: monto
   }).eq("id", req.params.id);
   res.json({ success: true });
 });
 
-// RUTA DE ADMINISTRACIÓN SIMPLIFICADA
 app.post("/corte-caja", async (req, res) => {
   if (req.body.password !== "1234") return res.status(401).json({ error: "Incorrecto" });
-  
-  const { data, error } = await supabase
-    .from("tickets")
-    .select("monto")
-    .eq("fecha", fechaCDMX())
-    .eq("cobrado", true);
-
+  const { data, error } = await supabase.from("tickets").select("monto").eq("fecha", fechaCDMX()).eq("cobrado", true);
   if (error) return res.status(500).json({ error: "Error DB" });
-
   const total = data.reduce((sum, t) => sum + Number(t.monto || 0), 0);
   res.json({ total, boletos: data.length });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ASTERISCO SIMPLE
-app.get("*", (req, res) => {
+// ÚNICO CAMBIO: Se agregó la barra / antes del * para que Render no de error
+app.get("/*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
