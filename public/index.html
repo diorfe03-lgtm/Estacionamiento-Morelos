@@ -69,16 +69,32 @@ let html5QrCode;
 
 // --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
-  const base64Html = btoa(unescape(encodeURIComponent(`
-    <div style="width:200px;text-align:center;">
-      <b>ESTACIONAMIENTO</b><br>
-      ID: ${id.substring(0,5)}<br>
-      PLACAS: ${info.placas.toUpperCase()}
+  const fecha = new Date().toLocaleString('es-MX', { hour:'2-digit', minute:'2-digit' });
+  
+  // Diseño limpio y profesional
+  const ticketHTML = `
+    <div style="width:200px; font-family:monospace; text-align:center;">
+      <h2 style="margin:0;">ESTACIONAMIENTO</h2>
+      <p style="margin:0;">MORELOS :)</p>
+      <br>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
+      <br><br>
+      <div style="text-align:left; font-size:16px;">
+        <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
+        <b>ENTRADA:</b> ${fecha}
+      </div>
+      <p>------------------</p>
+      <p>CONSERVE SU BOLETO</p>
+      <br><br>
     </div>
-  `)));
+  `;
 
-  // Usamos el comando 'rawbt:base64' que es el más directo que existe
-  window.location.href = "rawbt:base64:" + base64Html;
+  // Codificamos el HTML
+  const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
+  
+  // EL CAMBIO CLAVE: Usamos 'data:text/html;base64' para que RawBT sepa que es un diseño web
+  // Y añadimos '&auto=1' para que no pida confirmación
+  window.location.href = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
 }
 
 function startScanner() {
