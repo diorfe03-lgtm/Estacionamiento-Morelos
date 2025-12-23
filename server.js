@@ -8,13 +8,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔑 SUPABASE - Asegúrate de tener estas variables en Render
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
-// 🕒 UTILIDADES DE FECHA
+// UTILIDADES DE FECHA
 function fechaCDMX(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "America/Mexico_City",
@@ -29,18 +28,25 @@ function horaCDMX(iso) {
   });
 }
 
+// LÓGICA DE COBRO CON TOLERANCIA DE 10 MINUTOS
 function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
-  const now = new Date();
-  const mins = Math.ceil((now - entrada) / 60000);
-  let monto = 15; // Primera hora
-  if (mins > 60) {
-    monto += Math.ceil((mins - 60) / 20) * 5;
+  const ahora = new Date(); 
+  const minsTotales = Math.floor((ahora - entrada) / 60000);
+  
+  if (minsTotales <= 70) {
+    return 15; // Base: 1 hora + 10 min de gracia
   }
-  return monto;
+
+  // Restamos los 70 mins base y calculamos bloques de 20 mins
+  // El salto ocurre al minuto 71, 91, 111, etc.
+  const minsExcedentes = minsTotales - 70;
+  const bloquesExtra = Math.ceil(minsExcedentes / 20);
+  
+  return 15 + (bloquesExtra * 5);
 }
 
-// ➕ CREAR BOLETO
+// CREAR BOLETO (Devuelve la hora oficial del servidor)
 app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
@@ -48,20 +54,21 @@ app.post("/ticket", async (req, res) => {
   const id = uuid();
   const now = new Date();
 
-  const { error } = await supabase.from("tickets").insert([{
+  const { data, error } = await supabase.from("tickets").insert([{
     id,
     fecha: fechaCDMX(now),
     placas: placas.trim(),
     marca, modelo, color,
     hora_entrada: now.toISOString(),
     cobrado: false
-  }]);
+  }]).select();
 
   if (error) return res.status(500).json({ error: "Error DB" });
-  res.json({ id });
+  
+  // Enviamos el id y la hora_entrada generada por el servidor
+  res.json({ id: data[0].id, hora_entrada: data[0].hora_entrada });
 });
 
-// 🔍 CONSULTAR BOLETO
 app.get("/ticket/:id", async (req, res) => {
   const { data: t, error } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
   if (error || !t) return res.json({ error: "No encontrado" });
@@ -74,7 +81,6 @@ app.get("/ticket/:id", async (req, res) => {
   });
 });
 
-// 💰 PAGO
 app.post("/pay/:id", async (req, res) => {
   const { data: t } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
   const monto = calcularMonto(t.hora_entrada);
@@ -86,7 +92,6 @@ app.post("/pay/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-// 📊 CORTE
 app.post("/corte-caja", async (req, res) => {
   if (req.body.password !== "1234") return res.status(401).json({ error: "Mal" });
   const { data } = await supabase.from("tickets").select("monto").eq("fecha", fechaCDMX()).eq("cobrado", true);
@@ -94,16 +99,10 @@ app.post("/corte-caja", async (req, res) => {
   res.json({ total, boletos: data.length });
 });
 
-// 🌐 SERVIR FRONTEND
 app.use(express.static(path.join(__dirname, "public")));
-
-// Solución definitiva para Node 22/Express 5+
-// En lugar de "*", usamos una expresión regular que capture todo sin errores
 app.get(/^(?!\/(ticket|pay|corte-caja)).*$/, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Servidor en puerto " + PORT));
-
-//vamos a poner este comentario para volver a reinciar el build
