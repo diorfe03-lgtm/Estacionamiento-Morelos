@@ -6,6 +6,7 @@
 <title>Estacionamiento Pro</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
@@ -74,75 +75,62 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Crear contenedor temporal para el QR
-    const qrDiv = document.createElement('div');
-    const qrcode = new QRCode(qrDiv, {
-        text: id,
-        width: 250,
-        height: 250,
-        correctLevel : QRCode.CorrectLevel.H
+    // 1. Crear el diseño en un contenedor oculto
+    const tempDiv = document.createElement('div');
+    tempDiv.style.width = '350px';
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.background = 'white';
+    tempDiv.style.padding = '10px';
+    
+    tempDiv.innerHTML = `
+        <div id="ticket-final" style="text-align: center; color: black; font-family: Arial;">
+            <b style="font-size: 22px;">ESTACIONAMIENTO</b><br>
+            <b style="font-size: 22px;">MORELOS 322</b><br>
+            <span style="font-size: 14px;">Morelos y Escobedo Centro, Comalcalco</span><br>
+            <div id="qrcode-local" style="margin: 10px auto; display: inline-block;"></div><br>
+            <div style="border-top: 3px solid black; border-bottom: 3px solid black; margin: 10px 0; padding: 5px;">
+                <span style="font-size: 18px;">PLACAS:</span><br>
+                <b style="font-size: 40px;">${info.placas.toUpperCase()}</b>
+            </div>
+            <div style="text-align: left; font-size: 16px;">
+                <b>MARCA:</b> ${info.marca || '---'}<br>
+                <b>MODELO:</b> ${info.modelo || '---'}<br>
+                <b>COLOR:</b> ${info.color || '---'}<br>
+                <b>ENTRADA:</b> ${fechaActual}
+            </div>
+            <div style="border: 2px solid black; margin: 10px 0; padding: 5px; font-weight: bold;">
+                HORARIO: 8:30 AM A 7:30 PM
+            </div>
+            <p style="font-size: 11px; text-align: justify;">
+                No nos hacemos responsables por robo total o parcial, ni por objetos de valor no depositados en administración.
+            </p>
+            <b>CONSERVE SU BOLETO</b>
+        </div>
+    `;
+    document.body.appendChild(tempDiv);
+
+    // 2. Generar QR dentro del div oculto
+    new QRCode(tempDiv.querySelector('#qrcode-local'), {
+        text: id, width: 180, height: 180
     });
 
-    // Retraso de 250ms para asegurar que el QR se dibuje en memoria
+    // 3. Convertir a imagen y enviar
     setTimeout(() => {
-        const qrImg = qrDiv.querySelector('img');
-        if(!qrImg) return alert("Error generando QR local");
-        const qrImageBase64 = qrImg.src;
-
-        const ticketHTML = `
-        <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
-            <div style="margin-bottom: 5px;">
-                <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
-                <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
-                <span style="font-size: 15px; display: block; line-height: 1.1;">
-                    Morelos y Escobedo Centro<br> Comalcalco, Tabasco
-                </span>
-            </div>
+        html2canvas(tempDiv, { scale: 2 }).then(canvas => {
+            const imgData = canvas.toDataURL("image/png");
+            const base64Data = imgData.replace(/^data:image\/(png|jpg);base64,/, "");
             
-            <div style="margin: 5px auto;">
-                <img src="${qrImageBase64}" width="200" height="200" style="display: block; margin: auto;" />
-            </div>
-
-            <div style="text-align: left; margin: 5px 10px;">
-                <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
-                    <b style="font-size: 20px;">PLACAS:</b>
-                    <b style="font-size: 44px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
-                </div>
-                <div style="font-size: 19px; line-height: 1.2;">
-                    <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
-                    <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
-                    <b>COLOR:</b> ${info.color.trim() || '---'}
-                </div>
-                <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
-                <div style="font-size: 18px;">
-                    <b>ENTRADA:</b> ${fechaActual}<br>
-                    <b>SALIDA:</b> POR DEFINIR
-                </div>
-            </div>
-
-            <div style="margin: 10px; font-size: 17px; border: 2px solid black; padding: 8px; font-weight: bold;">
-                HORARIO DE SERVICIO:<br> 8:30 AM A 7:30 PM
-            </div>
+            // Enviamos como imagen pura para que RawBT no se trabe procesando HTML
+            const rawbtUrl = "rawbt:data:image/png;base64," + base64Data + "&auto=1";
             
-            <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
-                <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
-            </div>
-
-            <div style="font-size: 15px; margin-top: 10px; font-weight: bold; margin-bottom: 5px;">
-                CONSERVE SU BOLETO<br> ¡GRACIAS POR SU PREFERENCIA!
-            </div>
-        </div>`;
-
-        const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
-        const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
-        const rawbtUrl = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
-
-        // Método de clic simulado para saltar bloqueos de Android/Chrome
-        const link = document.createElement("a");
-        link.href = rawbtUrl;
-        link.click();
-        
-    }, 500); 
+            const link = document.createElement("a");
+            link.href = rawbtUrl;
+            link.click();
+            
+            document.body.removeChild(tempDiv);
+        });
+    }, 400);
 }
 
 // --- RESTO DE FUNCIONES ---
