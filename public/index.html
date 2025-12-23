@@ -69,32 +69,86 @@ let html5QrCode;
 
 // --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
-  const fecha = new Date().toLocaleString('es-MX', { hour:'2-digit', minute:'2-digit' });
+  // Obtenemos la hora de entrada formateada
+  const fechaActual = new Date().toLocaleString('es-MX', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric',
+    hour12: true 
+  });
   
-  // Diseño limpio y profesional
+  // Contenido del Ticket con todos los datos y políticas
   const ticketHTML = `
-    <div style="width:200px; font-family:monospace; text-align:center;">
-      <h2 style="margin:0;">ESTACIONAMIENTO</h2>
-      <p style="margin:0;">MORELOS :)</p>
-      <br>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
-      <br><br>
-      <div style="text-align:left; font-size:16px;">
-        <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
-        <b>ENTRADA:</b> ${fecha}
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { 
+          font-family: 'Courier New', Courier, monospace; 
+          width: 80mm; 
+          margin: 0; 
+          padding: 5px; 
+          text-align: center; 
+          color: #000;
+        }
+        .header h2 { margin: 5px 0; font-size: 18px; }
+        .qr-container { margin: 10px 0; }
+        .details { text-align: left; font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
+        .divider { border-top: 1px dashed #000; margin: 10px 0; }
+        .footer { font-size: 11px; font-weight: bold; }
+        @media print {
+          @page { margin: 0; }
+          body { margin: 5mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>ESTACIONAMIENTO</h2>
+        <p style="margin:0;">MORELOS :)</p>
       </div>
-      <p>------------------</p>
-      <p>CONSERVE SU BOLETO</p>
-      <br><br>
-    </div>
+
+      <div class="qr-container">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="140" height="140" />
+        <p style="font-size: 10px; margin: 2px;">ID: ${id.substring(0,8)}</p>
+      </div>
+
+      <div class="details">
+        <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
+        <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
+        <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
+        <b>COLOR:</b> ${info.color.trim() || '---'}<br>
+        <div class="divider"></div>
+        <b>ENTRADA:</b> ${fechaActual}<br>
+        <b>SALIDA:</b> POR DEFINIR
+      </div>
+
+      <div class="divider"></div>
+      
+      <div class="footer">
+        <p>HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM</p>
+        <p>POR FAVOR CONSERVE SU BOLETO<br>NO NOS HACEMOS RESPONSABLES POR OBJETOS PERSONALES DEJADOS EN EL VEHÍCULO</p>
+        <p>¡GRACIAS POR SU PREFERENCIA!</p>
+      </div>
+
+      <script>
+        // Auto-impresión al cargar
+        window.onload = function() {
+          window.print();
+          // Opcional: cerrar la ventana automáticamente después de imprimir
+          // window.onafterprint = function() { window.close(); };
+        };
+      <\/script>
+    </body>
+    </html>
   `;
 
-  // Codificamos el HTML
-  const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
-  
-  // EL CAMBIO CLAVE: Usamos 'data:text/html;base64' para que RawBT sepa que es un diseño web
-  // Y añadimos '&auto=1' para que no pida confirmación
-  window.location.href = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
+  // Abrir ventana emergente
+  const ventanaImpresion = window.open('', '_blank', 'width=450,height=650');
+  ventanaImpresion.document.write(ticketHTML);
+  ventanaImpresion.document.close();
 }
 
 function startScanner() {
