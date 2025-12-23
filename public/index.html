@@ -59,68 +59,40 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // 1. Crear un contenedor temporal para diseñar el ticket con HTML/CSS
-    const ticketVirtual = document.createElement('div');
-    ticketVirtual.style.width = '350px';
-    ticketVirtual.style.padding = '10px';
-    ticketVirtual.style.background = 'white';
-    ticketVirtual.style.color = 'black';
-    ticketVirtual.style.textAlign = 'center';
-    ticketVirtual.style.fontFamily = 'monospace';
+    // COMANDOS ESC/POS PUROS (Formato Hexadecimal compatible con RawBT)
+    // \x1B\x45\x01 = Negrita ON | \x1D\x21\x11 = Tamaño Doble
+    const ticket = [
+        "\x1B\x61\x01", // Centrado
+        "\x1B\x45\x01", // Negrita ON
+        "ESTACIONAMIENTO\n",
+        "MORELOS 322\n",
+        "\x1B\x45\x00", // Negrita OFF
+        "Comalcalco, Tabasco\n",
+        "--------------------------------\n",
+        "PLACAS:\n",
+        "\x1D\x21\x11", // Tamaño DOBLE (Alto y Ancho)
+        info.placas.toUpperCase() + "\n",
+        "\x1D\x21\x00", // Tamaño NORMAL
+        "--------------------------------\n",
+        "\x1B\x61\x00", // Alineación Izquierda
+        "MARCA: " + (info.marca || "---") + "\n",
+        "MODELO: " + (info.modelo || "---") + "\n",
+        "COLOR: " + (info.color || "---") + "\n",
+        "ENTRADA: " + fechaActual + "\n",
+        "\x1B\x61\x01", // Centrado
+        "--------------------------------\n",
+        "\x1B\x45\x01", "CONSERVE SU BOLETO\n", "\x1B\x45\x00",
+        "--------------------------------\n",
+        "\n",
+        // Comando especial de RawBT para el QR que SI funciona en modo texto
+        "[C]<qrcode size='10'>" + id + "</qrcode>\n",
+        "\n\n\n\n" // Espacio para corte
+    ].join("");
 
-    ticketVirtual.innerHTML = `
-        <h2 style="margin:0; font-size:24px;">ESTACIONAMIENTO</h2>
-        <h3 style="margin:0; font-size:18px;">MORELOS 322</h3>
-        <p style="margin:2px; font-size:14px;">Comalcalco, Tabasco</p>
-        <p>--------------------------------</p>
-        <p style="margin:0; font-size:16px;">PLACAS:</p>
-        <h1 style="margin:5px 0; font-size:45px; font-weight:bold;">${info.placas.toUpperCase()}</h1>
-        <p>--------------------------------</p>
-        <div style="text-align:left; font-size:16px; font-weight:bold;">
-            MARCA: ${info.marca || "---"}<br>
-            MODELO: ${info.modelo || "---"}<br>
-            COLOR: ${info.color || "---"}<br>
-            ENTRADA: ${fechaActual}
-        </div>
-        <p>--------------------------------</p>
-        <p style="font-weight:bold; margin:2px;">HORARIO: 8:30AM - 7:30PM</p>
-        <p style="font-size:12px; margin:0;">No nos hacemos responsables por robo o daños.</p>
-        <p style="font-weight:bold;">CONSERVE SU BOLETO</p>
-        <p>--------------------------------</p>
-        <div id="qr-dest" style="display:flex; justify-content:center; padding:10px;"></div>
-        <br><br>
-    `;
-
-    // 2. Añadirlo al body oculto para que el navegador lo renderice
-    ticketVirtual.style.position = 'absolute';
-    ticketVirtual.style.top = '-9999px';
-    document.body.appendChild(ticketVirtual);
-
-    // 3. Usar una librería de QR simple o un texto si no quieres fallos
-    // Para asegurar que salga ALGO ahora mismo, usaremos el ID en texto grande
-    const qrDest = ticketVirtual.querySelector('#qr-dest');
-    qrDest.innerHTML = `<b style="font-size:12px;">ID: ${id}</b>`;
-
-    // 4. Convertir ese HTML en imagen usando una técnica nativa (SVG ForeignObject)
-    const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="350" height="650">
-            <foreignObject width="100%" height="100%">
-                <div xmlns="http://www.w3.org/1999/xhtml">
-                    ${ticketVirtual.innerHTML}
-                </div>
-            </foreignObject>
-        </svg>
-    `;
-
-    const base64Image = btoa(unescape(encodeURIComponent(svg)));
-    
-    // 5. Enviar a RawBT (Cambiamos el esquema para forzar la app)
-    const rawbtUrl = "rawbt:data:image/svg+xml;base64," + base64Image;
-    
-    window.location.href = rawbtUrl;
-
-    // Limpiar
-    document.body.removeChild(ticketVirtual);
+    // Convertimos a Base64 pero bajo el esquema 'application/octet-stream'
+    // Esto le dice a RawBT: "No proceses nada, solo suelta estos bytes a la impresora"
+    const base64Encoded = btoa(unescape(encodeURIComponent(ticket)));
+    window.location.href = "rawbt:data:application/octet-stream;base64," + base64Encoded;
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
