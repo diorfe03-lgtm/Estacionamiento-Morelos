@@ -70,23 +70,35 @@ let html5QrCode;
 // --- LÓGICA DE IMPRESIÓN (RAWBT) ---
 function enviarARawBT(id, info) {
   const fecha = new Date().toLocaleString('es-MX');
+  
+  // Diseño limpio
   const ticketHTML = `
-    <div style="width: 200px; font-family: monospace; text-align: center; background: white; padding: 10px;">
+    <html>
+    <body style="width:200px; font-family:monospace; text-align:center; padding:10px;">
       <h3 style="margin:0;">ESTACIONAMIENTO</h3>
       <p style="margin:0;">MORELOS :)</p>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" style="margin:10px 0;"/>
-      <div style="text-align: left; font-size: 12px;">
-        <p><b>PLACAS:</b> ${info.placas.toUpperCase()}</p>
-        <p><b>MARCA:</b> ${info.marca || "----"}</p>
-        <p><b>ENTRADA:</b> ${fecha}</p>
-        <p><b>ID:</b> ${id.substring(0,8)}</p>
+      <br>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
+      <br><br>
+      <div style="text-align:left; font-size:14px;">
+        <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
+        <b>MARCA:</b> ${info.marca || "----"}<br>
+        <b>ENTRADA:</b> ${fecha}<br>
+        <b>ID:</b> ${id.substring(0,8)}
       </div>
       <p>----------------------</p>
       <p>Guarde su boleto</p>
-    </div>
+      <br><br>
+    </body>
+    </html>
   `;
+
+  // Cambiamos la forma de envío:
+  // Usamos 'rawbt:base64' pero le decimos que el contenido es HTML
   const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
-  window.location.href = "rawbt:html/" + base64Html;
+  
+  // Esta es la cadena de conexión correcta para que RawBT NO imprima el código
+  window.location.href = "intent:#Intent;scheme=rawbt;action=ru.a402d.rawbtprinter.action.PRINT;S.base64=" + base64Html + ";S.mimeType=text/html;end;";
 }
 
 // --- LÓGICA DEL ESCÁNER (CÁMARA) ---
