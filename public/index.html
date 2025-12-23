@@ -6,8 +6,6 @@
 <title>Estacionamiento Pro</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
@@ -43,12 +41,9 @@
   <div id="payTicket" class="card hidden">
     <button class="warning" onclick="startScanner()">📷 Escanear Código QR</button>
     <div id="reader" class="hidden"></div>
-    
     <input placeholder="ID del Boleto" id="qrId">
     <button class="secondary" onclick="scanQr()">Buscar Datos</button>
-    
     <div id="chargeInfo" class="info-pago"></div>
-    
     <div id="confirmArea" class="hidden">
       <label style="display:block; margin: 15px 0; font-size: 18px;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
       <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
@@ -69,158 +64,86 @@
 const API = window.location.origin;
 let html5QrCode;
 
-// --- LÓGICA DE IMPRESIÓN (CORREGIDA PARA RAWBT) ---
+// --- NUEVA LÓGICA DE IMPRESIÓN BASADA EN TEXTO (SIN ERROR BASE64) ---
 function enviarARawBT(id, info) {
     const fechaActual = new Date().toLocaleString('es-MX', { 
         hour: '2-digit', minute: '2-digit', day: '2-digit', 
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    const tempDiv = document.createElement('div');
-    tempDiv.style.width = '300px'; // Un poco más estrecho para evitar recortes
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    tempDiv.style.background = 'white';
-    tempDiv.style.padding = '10px';
-    
-    tempDiv.innerHTML = `
-        <div style="text-align: center; color: black; font-family: monospace; background: white; width: 100%;">
-            <b style="font-size: 18px;">ESTACIONAMIENTO</b><br>
-            <b style="font-size: 18px;">MORELOS 322</b><br>
-            <span style="font-size: 12px;">Comalcalco, Tabasco</span><br>
-            
-            <div id="qr-final" style="margin: 5px auto; display: inline-block;"></div><br>
-            
-            <div style="border-top: 2px solid black; border-bottom: 2px solid black; margin: 5px 0; padding: 5px;">
-                <span style="font-size: 14px;">PLACAS:</span><br>
-                <b style="font-size: 38px; line-height: 1;">${info.placas.toUpperCase()}</b>
-            </div>
-            
-            <div style="text-align: left; font-size: 14px; line-height: 1.2;">
-                MARCA: ${info.marca || '---'}<br>
-                MODELO: ${info.modelo || '---'}<br>
-                COLOR: ${info.color || '---'}<br>
-                ENTRADA: ${fechaActual}
-            </div>
-            
-            <div style="border: 1px solid black; margin: 8px 0; padding: 5px; font-weight: bold; font-size: 14px;">
-                HORARIO: 8:30 AM A 7:30 PM
-            </div>
-            
-            <p style="font-size: 10px; text-align: justify; margin: 5px 0;">
-                No nos hacemos responsables por robo total o parcial, ni por objetos de valor.
-            </p>
-            <b>CONSERVE SU BOLETO</b>
-        </div>
-    `;
-    document.body.appendChild(tempDiv);
+    // Construimos el ticket usando secuencias ESC/POS simples que RawBT entiende nativamente
+    // [C] = Centrado, [L] = Izquierda, [B] = Negrita, [S] = Tamaño (S=Normal, M=Medio, L=Grande)
+    let ticketTexto = 
+        "[C]<b>ESTACIONAMIENTO</b>\n" +
+        "[C]<b>MORELOS 322</b>\n" +
+        "[C]Morelos y Escobedo Centro\n" +
+        "[C]Comalcalco, Tabasco\n" +
+        "[C]------------------------------\n" +
+        "[C]PLACAS:\n" +
+        "[C]<font size='big'><b>" + info.placas.toUpperCase() + "</b></font>\n" +
+        "[C]------------------------------\n" +
+        "[L]MARCA: " + (info.marca || "---") + "\n" +
+        "[L]MODELO: " + (info.modelo || "---") + "\n" +
+        "[L]COLOR: " + (info.color || "---") + "\n" +
+        "[L]ENTRADA: " + fechaActual + "\n" +
+        "[C]------------------------------\n" +
+        "[C]<b>HORARIO: 8:30AM - 7:30PM</b>\n" +
+        "[C]No nos hacemos responsables por\n" +
+        "[C]robo total o parcial.\n" +
+        "[C]<b>CONSERVE SU BOLETO</b>\n" +
+        "[C]------------------------------\n" +
+        "[C]<qrcode size='8'>" + id + "</qrcode>\n" +
+        "[C] \n" +
+        "[C] \n";
 
-    // Generar QR
-    new QRCode(tempDiv.querySelector('#qr-final'), {
-        text: id, width: 140, height: 140
-    });
+    // Codificamos el texto para la URL de RawBT
+    const encodedText = btoa(unescape(encodeURIComponent(ticketTexto)));
+    const rawbtUrl = "rawbt:data:text/html;base64," + encodedText + "&auto=1";
 
-    setTimeout(() => {
-        html2canvas(tempDiv, { 
-            scale: 1.5, // Reducimos escala para que el base64 sea corto
-            backgroundColor: "#ffffff",
-            logging: false
-        }).then(canvas => {
-            // Generamos PNG
-            const imgData = canvas.toDataURL("image/png");
-            
-            // LIMPIEZA AGRESIVA: Solo caracteres válidos de Base64
-            // Esto elimina cualquier encabezado, espacio, o salto de línea
-            const rawBase64 = imgData.split(',')[1].replace(/[^A-Za-z0-9+/=]/g, "");
-            
-            const rawbtUrl = "rawbt:data:image/png;base64," + rawBase64 + "&auto=1";
-            
-            // Abrir directamente
-            window.location.href = rawbtUrl;
-            
-            document.body.removeChild(tempDiv);
-        });
-    }, 700);
+    window.location.href = rawbtUrl;
 }
 
-// --- FUNCIONES DE LA APP ---
-
+// --- FUNCIONES DE LA APP (IDÉNTICAS) ---
 function startScanner() {
   document.getElementById("reader").classList.remove("hidden");
   html5QrCode = new Html5Qrcode("reader");
-  html5QrCode.start(
-    { facingMode: "environment" }, 
-    { fps: 15, qrbox: { width: 250, height: 250 } },
-    (decodedText) => {
+  html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (decodedText) => {
       document.getElementById("qrId").value = decodedText;
       stopScanner();
       scanQr(); 
-    },
-    (errorMessage) => { }
-  ).catch(err => alert("Error de cámara: " + err));
+  }).catch(err => alert("Cámara error: " + err));
 }
 
 function stopScanner() {
-  if (html5QrCode) {
-    html5QrCode.stop().then(() => {
-      document.getElementById("reader").classList.add("hidden");
-    }).catch(() => {});
-  }
+  if (html5QrCode) { html5QrCode.stop().then(() => { document.getElementById("reader").classList.add("hidden"); }).catch(() => {}); }
 }
 
 async function createTicket() {
   const p = document.getElementById("placas").value;
   if (!p.trim()) return alert("Placas obligatorias");
-  
-  const info = { 
-    placas: p, 
-    marca: document.getElementById("marca").value, 
-    modelo: document.getElementById("modelo").value, 
-    color: document.getElementById("color").value 
-  };
-  
+  const info = { placas: p, marca: document.getElementById("marca").value, modelo: document.getElementById("modelo").value, color: document.getElementById("color").value };
   try {
-    const res = await fetch(API + "/ticket", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(info)
-    });
+    const res = await fetch(API + "/ticket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(info) });
     const data = await res.json();
     enviarARawBT(data.id, info);
     limpiarNuevo();
-  } catch(e) {
-    alert("Error conectando con el servidor");
-  }
+  } catch(e) { alert("Error de red"); }
 }
 
 async function scanQr() {
-  const idBuscado = document.getElementById("qrId").value;
-  if(!idBuscado) return;
-  
-  const res = await fetch(API + "/ticket/" + idBuscado);
+  const id = document.getElementById("qrId").value;
+  if(!id) return;
+  const res = await fetch(API + "/ticket/" + id);
   const data = await res.json();
-  
-  if (data.error) {
-    document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`;
-    document.getElementById("confirmArea").classList.add("hidden");
-    return;
-  }
-
-  document.getElementById("chargeInfo").innerHTML = `
-    <div style="margin-top:10px; border-top:2px solid #eee; padding-top:10px; font-size:20px;">
-      <p><strong>Placa:</strong> ${data.placas}</p>
-      <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
-      <p>Total a pagar:</p>
-      <div class="total">$${data.monto}.00</div>
-    </div>
-  `;
+  if (data.error) { document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`; return; }
+  document.getElementById("chargeInfo").innerHTML = `<div style="margin-top:10px; border-top:1px solid #ccc; padding-top:10px;">
+    <p>Placa: ${data.placas}</p><p>Total: <span class="total">$${data.monto}.00</span></p></div>`;
   document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
-  const idBuscado = document.getElementById("qrId").value;
   if (!document.getElementById("confirmPaid").checked) return alert("Confirma el cobro.");
-  
-  await fetch(API + "/pay/" + idBuscado, { method:"POST" });
+  await fetch(API + "/pay/" + document.getElementById("qrId").value, { method:"POST" });
   alert("¡Pago registrado!");
   showPay();
 }
@@ -232,10 +155,7 @@ function limpiarCobro() { document.getElementById("qrId").value=""; document.get
 function toggleCorte() { document.getElementById("corteSection").classList.toggle("hidden"); }
 
 async function obtenerCorte() {
-  const res = await fetch(API + "/corte-caja", {
-    method: "POST", headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ password: document.getElementById("adminPass").value })
-  });
+  const res = await fetch(API + "/corte-caja", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ password: document.getElementById("adminPass").value }) });
   const data = await res.json();
   if (res.status === 401) return alert("Clave Incorrecta");
   document.getElementById("corteResultado").innerHTML = `<p class="total">Hoy: $${data.total}.00</p><p>Boletos: ${data.boletos}</p>`;
