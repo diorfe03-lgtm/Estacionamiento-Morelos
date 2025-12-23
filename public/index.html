@@ -78,46 +78,47 @@ function enviarARawBT(id, info) {
     hour12: true 
   });
 
-  // Diseño optimizado para el motor de RawBT
+  // Diseño optimizado para RawBT
   const ticketHTML = `
-    <div style="width:100%; font-family:monospace; text-align:center; padding:0; margin:0;">
-      <h2 style="margin:0; font-size:22px;">ESTACIONAMIENTO</h2>
-      <p style="margin:0; font-size:16px;">MORELOS :)</p>
-      
-      <div style="margin:10px 0;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
-      </div>
-
-      <div style="text-align:left; font-size:15px; margin-left:10px;">
+    <div style="width:100%; font-family:monospace; text-align:center;">
+      <h2 style="margin:0;">ESTACIONAMIENTO</h2>
+      <p style="margin:0;">MORELOS :)</p>
+      <br>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" width="150" height="150" />
+      <br><br>
+      <div style="text-align:left; font-size:14px;">
         <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
         <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
         <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
         <b>COLOR:</b> ${info.color.trim() || '---'}<br>
-        <hr style="border:none; border-top:1px dashed #000;">
+        <p>-------------------------</p>
         <b>ENTRADA:</b> ${fechaActual}<br>
         <b>SALIDA:</b> POR DEFINIR
       </div>
-
-      <div style="margin-top:10px; font-size:12px; font-weight:bold;">
-        <p style="margin:2px;">HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM</p>
-        <p style="margin:5px;">CONSERVE SU BOLETO - NO OBJETOS PERSONALES</p>
-        <p style="margin:2px;">¡GRACIAS POR SU PREFERENCIA!</p>
+      <div style="font-size:11px; margin-top:10px;">
+        <b>HORARIO: 8:30 AM A 7:30 PM</b><br>
+        CONSERVE SU BOLETO
       </div>
     </div>
   `;
 
-  // 1. Limpiamos el HTML para evitar caracteres extraños en la codificación
+  // Codificación limpia
   const cleanHtml = ticketHTML.replace(/\s+/g, ' ').trim();
-  
-  // 2. Codificamos correctamente a Base64
-  // Usamos btoa(unescape(encodeURIComponent())) para manejar caracteres latinos (ñ, acentos)
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
+  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
+
+  // --- EL TRUCO DEL IFRAME PARA QUE NO CAMBIE DE PÁGINA ---
+  let iframe = document.getElementById('hidden-print-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'hidden-print-iframe';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
   
-  // 3. Llamada directa al protocolo de RawBT
-  // El parámetro &auto=1 intenta imprimir sin confirmar si RawBT está configurado así
-  const url = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
-  
-  window.location.href = url;
+  // Cargamos el enlace de RawBT en el iframe oculto
+  // Esto disparará la app RawBT como un "aviso" en tu celular
+  iframe.src = rawbtUrl;
 }
 
 function startScanner() {
