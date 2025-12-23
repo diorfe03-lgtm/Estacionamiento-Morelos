@@ -59,36 +59,34 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Usamos etiquetas de formato nativas de RawBT que funcionan en text/plain
-    // [C] = Centro, [L] = Izquierda
-    // {b} = Negrita, {h1} = Tamaño grande
+    // Formato Markdown especial para RawBT
+    // # = Título Grande, ## = Título Medio, ** = Negrita, [C] = Centrar
     let t = "";
-    t += "[C]{h2}ESTACIONAMIENTO{/h2}\n";
-    t += "[C]{h2}MORELOS 322{/h2}\n";
+    t += "[C]# ESTACIONAMIENTO\n";
+    t += "[C]## MORELOS 322\n";
     t += "[C]Comalcalco, Tabasco\n";
     t += "[C]--------------------------------\n";
-    t += "[C]{h3}PLACAS:{/h3}\n";
-    t += "[C]{h1}" + info.placas.toUpperCase() + "{/h1}\n";
+    t += "[C]### PLACAS:\n";
+    t += "[C]# " + info.placas.toUpperCase() + "\n";
     t += "[C]--------------------------------\n";
-    t += "[L]{b}MARCA:{/b} " + (info.marca || "---") + "\n";
-    t += "[L]{b}MODELO:{/b} " + (info.modelo || "---") + "\n";
-    t += "[L]{b}COLOR:{/b} " + (info.color || "---") + "\n";
-    t += "[L]{b}ENTRADA:{/b} " + fechaActual + "\n";
+    t += "**MARCA:** " + (info.marca || "---") + "\n";
+    t += "**MODELO:** " + (info.modelo || "---") + "\n";
+    t += "**COLOR:** " + (info.color || "---") + "\n";
+    t += "**ENTRADA:** " + fechaActual + "\n";
     t += "[C]--------------------------------\n";
-    t += "[C]{b}HORARIO: 8:30AM - 7:30PM{/b}\n";
+    t += "[C]**HORARIO: 8:30AM - 7:30PM**\n";
     t += "[C]No nos hacemos responsables\n";
     t += "[C]por robo o daños.\n";
-    t += "[C]{b}CONSERVE SU BOLETO{/b}\n";
+    t += "[C]**CONSERVE SU BOLETO**\n";
     t += "[C]--------------------------------\n";
-    t += "[C]<qrcode size='10'>" + id + "</qrcode>\n";
+    t += "[C]<qrcode>" + id + "</qrcode>\n";
     t += "\n\n\n\n"; 
 
-    // Codificación segura para evitar el "Empty print job"
-    const utf8Text = unescape(encodeURIComponent(t));
-    const base64Text = btoa(utf8Text);
+    // IMPORTANTE: Codificación limpia
+    const base64Text = btoa(unescape(encodeURIComponent(t)));
     
-    // Cambiamos a text/plain que es el que tu impresora aceptó antes
-    window.location.href = "rawbt:data:text/html;base64," + base64Text;
+    // Usamos el esquema 'vnd.rawbt.title' que obliga a RawBT a procesar el formato
+    window.location.href = "rawbt:data:text/plain;base64," + base64Text;
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
