@@ -62,7 +62,7 @@ app.post("/ticket", async (req, res) => {
   if (error) return res.status(500).json({ error: "Error DB" });
   
   // Enviamos la hora exacta que el servidor acaba de guardar
-  res.json({ id: data[0].id, hora_entrada: data[0].hora_entrada });
+  res.json({ id: data[0].id, hora_entrada: now.getTime() });
 });
 
 app.get("/ticket/:id", async (req, res) => {
