@@ -69,31 +69,35 @@ let html5QrCode;
 
 // --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
-  const fecha = new Date().toLocaleString('es-MX', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+  const fecha = new Date().toLocaleString('es-MX', { hour:'2-digit', minute:'2-digit' });
   
-  // Diseño con fuentes grandes (28px - 35px)
+  // Usamos una estructura más compacta para que el pop-up no se sature
   const ticketHTML = `
-    <div style="width:100%; font-family:monospace; text-align:center;">
-      <h1 style="margin:0; font-size:35px;">ESTACIONAMIENTO</h1>
-      <h2 style="margin:0; font-size:30px;">MORELOS :)</h2>
-      <br>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" />
-      <br><br>
-      <div style="text-align:left; font-size:28px; line-height:1.2;">
-        <b>PLACAS:</b> <span style="font-size:38px;">${info.placas.toUpperCase()}</span><br>
-        <b>MARCA:</b> ${info.marca.toUpperCase() || "---"}<br>
-        <b>HORA:</b> ${fecha}<br>
+    <div style="width:200px;text-align:center;font-family:monospace;">
+      <b style="font-size:20px;">ESTACIONAMIENTO</b><br>
+      <span>MORELOS :)</span><br><br>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${id}" width="140" height="140" /><br><br>
+      <div style="text-align:left;">
+        <b>PLACAS:</b> ${info.placas.toUpperCase()}<br>
+        <b>HORA:</b> ${fecha}
       </div>
-      <p style="font-size:25px;">------------------</p>
-      <p style="font-size:24px; font-weight:bold;">CONSERVE SU BOLETO</p>
-      <br><br>
+      <p>----------------------</p>
     </div>
   `;
 
   const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
-  // Nota: RawBT procesará esto y si tienes activado "Auto-print" en la app, saldrá directo.
- // Agregamos el parámetro "&auto=1" al final de la instrucción
- window.location.href = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
+  
+  // Usamos el comando 'S.command=print' para que el botón de RawBT 
+  // sepa que la orden es directa y se desbloquee.
+  const intentUrl = "intent:#Intent;" +
+    "action=ru.a402d.rawbtprinter.action.PRINT;" +
+    "S.base64=" + base64Html + ";" +
+    "S.mimeType=text/html;" +
+    "S.command=print;" + 
+    "B.auto_print=true;" + 
+    "end;";
+
+  window.location.href = intentUrl;
 }
 
 function startScanner() {
