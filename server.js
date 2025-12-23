@@ -95,16 +95,12 @@ app.post("/corte-caja", async (req, res) => {
 });
 
 // 🌐 SERVIR FRONTEND
-// Primero servimos los archivos estáticos de la carpeta public
 app.use(express.static(path.join(__dirname, "public")));
 
-// Esta es la forma más compatible de manejar el "catch-all" en versiones nuevas
-app.get("*", (req, res, next) => {
-  // Si la ruta no empieza con /ticket, /pay o /corte-caja, mandamos el index.html
-  if (!req.path.startsWith('/ticket') && !req.path.startsWith('/pay') && !req.path.startsWith('/corte-caja')) {
-    return res.sendFile(path.join(__dirname, "public", "index.html"));
-  }
-  next();
+// Solución definitiva para Node 22/Express 5+
+// En lugar de "*", usamos una expresión regular que capture todo sin errores
+app.get(/^(?!\/(ticket|pay|corte-caja)).*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
