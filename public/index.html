@@ -76,78 +76,71 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // 1. Crear el contenedor del ticket (Oculto)
     const tempDiv = document.createElement('div');
-    tempDiv.style.width = '350px';
+    tempDiv.style.width = '300px'; // Un poco más estrecho para evitar recortes
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
-    tempDiv.style.top = '0';
     tempDiv.style.background = 'white';
-    tempDiv.style.padding = '15px';
+    tempDiv.style.padding = '10px';
     
     tempDiv.innerHTML = `
-        <div style="text-align: center; color: black; font-family: Arial, sans-serif; background: white;">
-            <b style="font-size: 22px; display: block;">ESTACIONAMIENTO</b>
-            <b style="font-size: 22px; display: block;">MORELOS 322</b>
-            <span style="font-size: 14px;">Morelos y Escobedo Centro, Comalcalco</span><br>
+        <div style="text-align: center; color: black; font-family: monospace; background: white; width: 100%;">
+            <b style="font-size: 18px;">ESTACIONAMIENTO</b><br>
+            <b style="font-size: 18px;">MORELOS 322</b><br>
+            <span style="font-size: 12px;">Comalcalco, Tabasco</span><br>
             
-            <div id="qrcode-box" style="margin: 10px auto; display: inline-block;"></div><br>
+            <div id="qr-final" style="margin: 5px auto; display: inline-block;"></div><br>
             
-            <div style="border-top: 3px solid black; border-bottom: 3px solid black; margin: 10px 0; padding: 5px;">
-                <span style="font-size: 16px;">PLACAS:</span><br>
-                <b style="font-size: 44px; line-height: 1;">${info.placas.toUpperCase()}</b>
+            <div style="border-top: 2px solid black; border-bottom: 2px solid black; margin: 5px 0; padding: 5px;">
+                <span style="font-size: 14px;">PLACAS:</span><br>
+                <b style="font-size: 38px; line-height: 1;">${info.placas.toUpperCase()}</b>
             </div>
             
-            <div style="text-align: left; font-size: 17px; line-height: 1.2;">
-                <b>MARCA:</b> ${info.marca || '---'}<br>
-                <b>MODELO:</b> ${info.modelo || '---'}<br>
-                <b>COLOR:</b> ${info.color || '---'}<br>
-                <b>ENTRADA:</b> ${fechaActual}
+            <div style="text-align: left; font-size: 14px; line-height: 1.2;">
+                MARCA: ${info.marca || '---'}<br>
+                MODELO: ${info.modelo || '---'}<br>
+                COLOR: ${info.color || '---'}<br>
+                ENTRADA: ${fechaActual}
             </div>
             
-            <div style="border: 2px solid black; margin: 12px 0; padding: 8px; font-weight: bold; font-size: 16px;">
+            <div style="border: 1px solid black; margin: 8px 0; padding: 5px; font-weight: bold; font-size: 14px;">
                 HORARIO: 8:30 AM A 7:30 PM
             </div>
             
-            <p style="font-size: 11px; text-align: justify; margin-bottom: 5px;">
-                AVISO: No nos hacemos responsables por robo total o parcial, ni por objetos de valor no depositados en administración.
+            <p style="font-size: 10px; text-align: justify; margin: 5px 0;">
+                No nos hacemos responsables por robo total o parcial, ni por objetos de valor.
             </p>
-            <b style="font-size: 14px;">¡CONSERVE SU BOLETO!</b>
+            <b>CONSERVE SU BOLETO</b>
         </div>
     `;
     document.body.appendChild(tempDiv);
 
-    // 2. Generar QR dentro del div
-    new QRCode(tempDiv.querySelector('#qrcode-box'), {
-        text: id,
-        width: 180,
-        height: 180,
-        correctLevel: QRCode.CorrectLevel.H
+    // Generar QR
+    new QRCode(tempDiv.querySelector('#qr-final'), {
+        text: id, width: 140, height: 140
     });
 
-    // 3. Tomar captura y enviar a RawBT
     setTimeout(() => {
         html2canvas(tempDiv, { 
-            scale: 2,
-            backgroundColor: "#ffffff"
+            scale: 1.5, // Reducimos escala para que el base64 sea corto
+            backgroundColor: "#ffffff",
+            logging: false
         }).then(canvas => {
-            // Usamos JPEG para mejor compatibilidad y peso
-            const imgData = canvas.toDataURL("image/jpeg", 0.9);
+            // Generamos PNG
+            const imgData = canvas.toDataURL("image/png");
             
-            // LIMPIEZA CRUCIAL DEL BASE64
-            const base64Data = imgData.replace(/^data:image\/(jpeg|jpg);base64,/, "");
+            // LIMPIEZA AGRESIVA: Solo caracteres válidos de Base64
+            // Esto elimina cualquier encabezado, espacio, o salto de línea
+            const rawBase64 = imgData.split(',')[1].replace(/[^A-Za-z0-9+/=]/g, "");
             
-            // Construcción del enlace RawBT
-            const rawbtUrl = "rawbt:data:image/jpeg;base64," + base64Data + "&auto=1";
+            const rawbtUrl = "rawbt:data:image/png;base64," + rawBase64 + "&auto=1";
             
-            const link = document.createElement("a");
-            link.href = rawbtUrl;
-            link.click();
+            // Abrir directamente
+            window.location.href = rawbtUrl;
             
-            // Eliminar elemento temporal
             document.body.removeChild(tempDiv);
         });
-    }, 600); // Tiempo suficiente para que el QR se renderice
+    }, 700);
 }
 
 // --- FUNCIONES DE LA APP ---
