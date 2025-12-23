@@ -9,7 +9,7 @@
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
   .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
   h2 { text-align: center; color:#2a5298; margin-top: 0; }
-  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; }
   .primary { background:#2a5298; color:white; }
   .secondary { background:#f1f5f9; color: #1e3c72; }
   .success { background:#16a34a; color:white; }
@@ -31,9 +31,7 @@
 
   <div id="newTicket" class="card hidden">
     <input placeholder="Placas (Obligatorio)" id="placas">
-    <input placeholder="Marca" id="marca">
-    <input placeholder="Modelo" id="modelo">
-    <input placeholder="Color" id="color">
+    <input placeholder="Marca" id="marca"><input placeholder="Modelo" id="modelo"><input placeholder="Color" id="color">
     <button class="primary" onclick="createTicket()">Imprimir Ticket</button>
   </div>
 
@@ -42,9 +40,7 @@
     <div id="reader" class="hidden"></div>
     <input placeholder="ID del Boleto" id="qrId">
     <button class="secondary" onclick="scanQr()">Buscar Datos</button>
-    
     <div id="chargeInfo" style="text-align: center;"></div>
-    
     <div id="confirmArea" class="hidden">
       <label style="display:block; margin: 15px 0;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
       <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
@@ -57,7 +53,7 @@
   <div id="adminPanel" class="card hidden">
     <input type="password" id="adminPass" placeholder="Contraseña Admin">
     <button class="primary" onclick="obtenerCorte()">Ver Resumen</button>
-    <div id="adminResult" style="margin-top:10px;"></div>
+    <div id="adminResult" style="margin-top:10px; text-align: center;"></div>
   </div>
 </div>
 
@@ -66,41 +62,17 @@ const API = window.location.origin;
 let html5QrCode;
 
 function enviarARawBT(id, info, horaServidor) {
-  // Convertimos los milisegundos del servidor a hora local de México
   const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
-    hour: '2-digit', minute: '2-digit', day: '2-digit', 
-    month: '2-digit', year: 'numeric', hour12: true,
-    timeZone: 'America/Mexico_City' 
+    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
   });
-
-  const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
-      <b style="font-size: 24px;">ESTACIONAMIENTO</b><br>
-      <b style="font-size: 24px;">MORELOS 322</b><br>
-      <span style="font-size: 15px;">Morelos y Escobedo Centro, Comalcalco</span>
-      <div style="margin: 10px auto;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="180" height="180" />
-      </div>
-      <div style="text-align: left; margin: 0 10px;">
-        <div style="border: 2px solid black; padding: 5px; text-align: center;">
-          <span style="font-size: 18px;">PLACAS:</span><br>
-          <b style="font-size: 40px;">${info.placas.toUpperCase()}</b>
-        </div>
-        <p style="font-size: 18px; margin: 10px 0;">
-          <b>MARCA:</b> ${info.marca || '---'}<br>
-          <b>COLOR:</b> ${info.color || '---'}
-        </p>
-        <div style="border-top: 1px dashed black; padding-top: 5px;">
-          <b>ENTRADA:</b> ${fechaOficial}
-        </div>
-      </div>
-      <p style="font-size: 14px; margin: 10px;">CONSERVE SU BOLETO</p>
-    </div>
-  `;
-
+  const ticketHTML = `<div style="width: 350px; font-family: Arial; text-align: center; color: black; background: white; padding: 10px;">
+    <b style="font-size: 24px;">MORELOS 322</b><br>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="180" height="180" /><br>
+    <b style="font-size: 40px;">${info.placas.toUpperCase()}</b><br>
+    <b>ENTRADA:</b> ${fechaOficial}
+  </div>`;
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const rawbtUrl = "rawbt:data:text/html;base64," + btoa(unescape(encodeURIComponent(cleanHtml)));
-  
   let iframe = document.getElementById('hidden-print-iframe') || document.createElement('iframe');
   iframe.id = 'hidden-print-iframe'; iframe.style.display = 'none';
   document.body.appendChild(iframe);
@@ -110,24 +82,11 @@ function enviarARawBT(id, info, horaServidor) {
 async function createTicket() {
   const p = document.getElementById("placas").value;
   if (!p.trim()) return alert("Placas obligatorias");
-  
-  const info = { 
-    placas: p, 
-    marca: document.getElementById("marca").value, 
-    modelo: document.getElementById("modelo").value, 
-    color: document.getElementById("color").value 
-  };
-
-  try {
-    const res = await fetch(API + "/ticket", { 
-      method:"POST", headers:{"Content-Type":"application/json"}, 
-      body: JSON.stringify(info) 
-    });
-    const data = await res.json();
-    enviarARawBT(data.id, info, data.hora_entrada);
-    alert("Ticket generado");
-    showNew(); // Limpiar campos
-  } catch(e) { alert("Error al imprimir"); }
+  const info = { placas: p, marca: document.getElementById("marca").value, modelo: document.getElementById("modelo").value, color: document.getElementById("color").value };
+  const res = await fetch(API + "/ticket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(info) });
+  const data = await res.json();
+  enviarARawBT(data.id, info, data.hora_entrada);
+  showNew();
 }
 
 async function scanQr() {
@@ -135,74 +94,39 @@ async function scanQr() {
   if(!id) return;
   const res = await fetch(API + "/ticket/" + id);
   const data = await res.json();
-  
-  if (data.error) {
-    document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`;
-    return;
-  }
-  
-  document.getElementById("chargeInfo").innerHTML = `
-    <div class="card">
-      <span>Placa: <b>${data.placas}</b></span>
-      <span class="total-text">$${data.monto}.00</span>
-    </div>`;
+  if (data.error) return alert(data.error);
+  document.getElementById("chargeInfo").innerHTML = `<div class="card"><span>Placa: <b>${data.placas}</b></span><span class="total-text">$${data.monto}.00</span></div>`;
   document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
   if (!document.getElementById("confirmPaid").checked) return alert("Confirma el pago");
-  const id = document.getElementById("qrId").value;
-  await fetch(API + "/pay/" + id, { method:"POST" });
+  await fetch(API + "/pay/" + document.getElementById("qrId").value, { method:"POST" });
   alert("Pago realizado");
   showPay();
 }
 
-// FUNCIONES ADMIN
-function toggleAdmin() {
-  document.getElementById("adminPanel").classList.toggle("hidden");
-}
+function toggleAdmin() { document.getElementById("adminPanel").classList.toggle("hidden"); }
 
 async function obtenerCorte() {
   const pass = document.getElementById("adminPass").value;
-  const res = await fetch(API + "/corte-caja", { 
-    method:"POST", headers:{"Content-Type":"application/json"}, 
-    body: JSON.stringify({ password: pass }) 
-  });
+  const res = await fetch(API + "/corte-caja", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ password: pass }) });
   const data = await res.json();
-  if(data.error) return alert("Password incorrecto");
-
-  let html = `<div style="background:#def7ec; padding:10px; border-radius:8px;">
-              <b>Total: $${data.total}.00</b><br>Autos: ${data.boletos}</div><br>`;
-  data.lista.forEach(t => {
-    html += `<div style="font-size:12px; border-bottom:1px solid #eee; padding:4px 0;">
-             ${t.placas} - <b>$${t.monto}</b></div>`;
-  });
-  document.getElementById("adminResult").innerHTML = html;
+  if(data.error) return alert("Incorrecto");
+  document.getElementById("adminResult").innerHTML = `<div class="card">
+    <p>Monto Total: <b style="color:#16a34a; font-size:20px;">$${data.total}.00</b></p>
+    <p>Coches Totales: <b>${data.boletos}</b></p>
+  </div>`;
 }
 
-// NAVEGACIÓN
-function showNew() {
-  document.getElementById("newTicket").classList.remove("hidden");
-  document.getElementById("payTicket").classList.add("hidden");
-  document.querySelectorAll("input").forEach(i => i.value = "");
-}
-
-function showPay() {
-  document.getElementById("payTicket").classList.remove("hidden");
-  document.getElementById("newTicket").classList.add("hidden");
-  document.getElementById("confirmArea").classList.add("hidden");
-  document.getElementById("chargeInfo").innerHTML = "";
-  document.getElementById("qrId").value = "";
-}
-
+function showNew() { document.getElementById("newTicket").classList.remove("hidden"); document.getElementById("payTicket").classList.add("hidden"); document.querySelectorAll("input").forEach(i=>i.value=""); }
+function showPay() { document.getElementById("payTicket").classList.remove("hidden"); document.getElementById("newTicket").classList.add("hidden"); document.getElementById("confirmArea").classList.add("hidden"); document.getElementById("chargeInfo").innerHTML=""; }
 function startScanner() {
   document.getElementById("reader").classList.remove("hidden");
   html5QrCode = new Html5Qrcode("reader");
   html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, (t) => {
     document.getElementById("qrId").value = t;
-    html5QrCode.stop();
-    document.getElementById("reader").classList.add("hidden");
-    scanQr();
+    html5QrCode.stop(); document.getElementById("reader").classList.add("hidden"); scanQr();
   });
 }
 </script>

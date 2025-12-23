@@ -16,7 +16,6 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
-// Utilidad para obtener la fecha actual en formato YYYY-MM-DD (Hora México)
 function fechaCDMX(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "America/Mexico_City",
@@ -24,7 +23,6 @@ function fechaCDMX(date = new Date()) {
   }).format(date);
 }
 
-// Lógica de cobro: $15 base (hasta 70 min) y luego $5 por cada 20 min o fracción
 function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
   const ahora = new Date(); 
@@ -38,7 +36,6 @@ function calcularMonto(horaEntrada) {
   return 15 + (bloquesExtra * 5);
 }
 
-// 1. CREAR TICKET
 app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
@@ -56,12 +53,9 @@ app.post("/ticket", async (req, res) => {
   }]).select();
 
   if (error) return res.status(500).json({ error: "Error DB" });
-  
-  // Enviamos el tiempo en milisegundos para evitar errores de zona horaria en el celular
   res.json({ id: data[0].id, hora_entrada: now.getTime() });
 });
 
-// 2. CONSULTAR TICKET PARA COBRO
 app.get("/ticket/:id", async (req, res) => {
   const { data: t, error } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
   if (error || !t) return res.json({ error: "No encontrado" });
@@ -73,44 +67,39 @@ app.get("/ticket/:id", async (req, res) => {
   });
 });
 
-// 3. REGISTRAR PAGO
 app.post("/pay/:id", async (req, res) => {
   const { data: t } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
-  if (!t) return res.status(404).json({ error: "No encontrado" });
-
-  const montoFinal = calcularMonto(t.hora_entrada);
+  const monto = calcularMonto(t.hora_entrada);
   await supabase.from("tickets").update({
     cobrado: true,
     hora_salida: new Date().toISOString(),
-    monto: montoFinal
+    monto: monto
   }).eq("id", req.params.id);
-
   res.json({ success: true });
 });
 
-// 4. CORTE DE CAJA (ADMIN)
+// RUTA DE ADMINISTRACIÓN SIMPLIFICADA
 app.post("/corte-caja", async (req, res) => {
-  if (req.body.password !== "1234") {
-    return res.status(401).json({ error: "Contraseña incorrecta" });
-  }
-
-  const hoy = fechaCDMX();
+  if (req.body.password !== "1234") return res.status(401).json({ error: "Incorrecto" });
+  
   const { data, error } = await supabase
     .from("tickets")
-    .select("placas, monto")
-    .eq("fecha", hoy)
+    .select("monto")
+    .eq("fecha", fechaCDMX())
     .eq("cobrado", true);
 
   if (error) return res.status(500).json({ error: "Error DB" });
 
   const total = data.reduce((sum, t) => sum + Number(t.monto || 0), 0);
-  res.json({ total, boletos: data.length, lista: data });
+  res.json({ total, boletos: data.length });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/(.*)", (req, res) => {
+
+// ASTERISCO SIMPLE
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor listo en puerto " + PORT));
+app.listen(PORT, () => console.log("Servidor en puerto " + PORT));
