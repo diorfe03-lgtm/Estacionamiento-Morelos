@@ -17,7 +17,7 @@
   input { width:100%; padding:12px; margin:6px 0; border-radius:10px; border:1px solid #ccc; box-sizing: border-box; font-size: 16px; }
   .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; border: 1px solid #e2e8f0; }
   .hidden { display:none; }
-  .total { font-size:28px; color:#16a34a; font-weight:bold; }
+  .total-text { font-size:32px; color:#16a34a; font-weight:bold; display: block; margin: 10px 0; }
   #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-top: 10px; }
 </style>
 </head>
@@ -39,7 +39,7 @@
     <div id="reader" class="hidden"></div>
     <input placeholder="ID del Boleto" id="qrId">
     <button class="secondary" onclick="scanQr()">Buscar Datos</button>
-    <div id="chargeInfo"></div>
+    <div id="chargeInfo" style="text-align: center;"></div>
     <div id="confirmArea" class="hidden">
       <label style="display:block; margin: 15px 0;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
       <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
@@ -60,41 +60,44 @@ const API = window.location.origin;
 let html5QrCode;
 
 function enviarARawBT(id, info, horaServidor) {
-  const dateObj = new Date(horaServidor);
-  const fechaOficial = dateObj.toLocaleString('es-MX', { 
+  const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
   });
 
+  // RESTAURADO: Diseño grande y espacioso idéntico a tu foto
   const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 10px;">
-      <b style="font-size: 22px;">ESTACIONAMIENTO</b><br>
-      <b style="font-size: 22px;">MORELOS 322</b><br>
-      <span style="font-size: 14px;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span><br>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="180" height="180" style="margin: 10px 0;" /><br>
-      <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0; margin-bottom: 5px;">
-        <span style="font-size: 18px;">PLACAS:</span><br>
-        <b style="font-size: 40px;">${info.placas.toUpperCase()}</b>
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
+      <div style="margin-bottom: 5px;">
+        <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
+        <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
+        <span style="font-size: 15px; display: block; line-height: 1.1;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
       </div>
-      <div style="text-align: left; margin: 5px; font-size: 17px; line-height: 1.2;">
-        <b>MARCA:</b> ${info.marca.trim() || '--'}<br>
-        <b>MODELO:</b> ${info.modelo.trim() || '--'}<br>
-        <b>COLOR:</b> ${info.color.trim() || '--'}
+      <div style="margin: 5px auto;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="display: block; margin: auto;" />
       </div>
-      <div style="border-top: 1px dashed black; margin: 10px 0;"></div>
-      <div style="text-align: left; margin: 5px; font-size: 17px;">
-        <b>ENTRADA:</b> ${fechaOficial}<br>
-        <b>SALIDA:</b> POR DEFINIR
+      <div style="text-align: left; margin: 5px 10px;">
+        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
+          <b style="font-size: 20px;">PLACAS:</b>
+          <b style="font-size: 44px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
+        </div>
+        <div style="font-size: 19px; line-height: 1.2;">
+          <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
+          <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
+          <b>COLOR:</b> ${info.color.trim() || '---'}
+        </div>
+        <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
+        <div style="font-size: 18px;">
+          <b>ENTRADA:</b> ${fechaOficial}<br>
+          <b>SALIDA:</b> POR DEFINIR
+        </div>
       </div>
-      <div style="margin: 10px 0; border: 1px solid black; padding: 5px;">
-        <b style="font-size: 16px;">HORARIO DE SERVICIO:</b><br>
-        <span style="font-size: 18px;">8:30 AM A 7:30 PM</span>
+      <div style="margin: 10px; font-size: 17px; border: 2px solid black; padding: 6px; font-weight: bold;">
+        HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM
       </div>
-      <p style="font-size: 11px; text-align: justify; line-height: 1.1; margin: 10px 0;">
+      <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
         <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
-      </p>
-      <div style="font-size: 15px; font-weight: bold; margin-top: 10px;">
-        CONSERVE SU BOLETO<br>¡GRACIAS POR SU PREFERENCIA!
       </div>
+      <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">CONSERVE SU BOLETO<br>¡GRACIAS POR SU PREFERENCIA!</div>
     </div>
   `;
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
@@ -121,14 +124,14 @@ async function scanQr() {
   const res = await fetch(API + "/ticket/" + id);
   const data = await res.json();
   if (data.error) return alert(data.error);
-  document.getElementById("chargeInfo").innerHTML = `<div class="card"><p>Placa: <b>${data.placas}</b></p><p class="total">$${data.monto}.00</p></div>`;
+  document.getElementById("chargeInfo").innerHTML = `<div class="card"><span>Placa: <b>${data.placas}</b></span><span class="total-text">$${data.monto}.00</span></div>`;
   document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
   if (!document.getElementById("confirmPaid").checked) return alert("Confirma el pago");
   await fetch(API + "/pay/" + document.getElementById("qrId").value, { method:"POST" });
-  alert("Pago registrado");
+  alert("Pago realizado");
   showPay();
 }
 
