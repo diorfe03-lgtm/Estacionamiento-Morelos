@@ -10,10 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 function fechaCDMX(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -61,9 +58,13 @@ app.post("/pay/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+// NUEVO: ENDPOINT DE ADMINISTRACIÓN
 app.post("/corte-caja", async (req, res) => {
   if (req.body.password !== "1234") return res.status(401).json({ error: "Incorrecto" });
-  const { data, error } = await supabase.from("tickets").select("monto").eq("fecha", fechaCDMX()).eq("cobrado", true);
+  const { data, error } = await supabase.from("tickets")
+    .select("monto")
+    .eq("fecha", fechaCDMX())
+    .eq("cobrado", true);
   if (error) return res.status(500).json({ error: "Error DB" });
   const total = data.reduce((sum, t) => sum + Number(t.monto || 0), 0);
   res.json({ total, boletos: data.length });
@@ -71,10 +72,10 @@ app.post("/corte-caja", async (req, res) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ESTA ES LA ÚNICA FORMA QUE NODE 22 ACEPTA AHORA PARA EL COMODÍN
+// CORRECCIÓN PARA RENDER: Usar expresión regular en lugar de "*"
 app.get("/(.*)", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor en puerto " + PORT));
+app.listen(PORT, () => console.log("Servidor listo en puerto " + PORT));
