@@ -107,13 +107,7 @@ function enviarARawBT(id, info, horaServidor) {
   if(oldIframe) oldIframe.remove();
 
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
-
-  const returnUrl = window.location.href;
-
-  // AGREGAMOS EL PARÁMETRO DE RETORNO AL FINAL DE LA URL RAWBT
-  const rawbtUrl = "rawbt:data:text/html;base64," + 
-                   btoa(unescape(encodeURIComponent(cleanHtml))) + 
-                   "&return_url=" + encodeURIComponent(returnUrl);
+  const rawbtUrl = "rawbt:data:text/html;base64," + btoa(unescape(encodeURIComponent(cleanHtml)));
   
   const iframe = document.createElement('iframe');
   iframe.id = 'hidden-print-iframe'; 
