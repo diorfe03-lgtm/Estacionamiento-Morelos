@@ -78,7 +78,7 @@ function enviarARawBT(id, info) {
     hour12: true 
   });
 
-  // DISEÑO AJUSTADO SIN ESPACIOS SOBRANTES AL FINAL
+  // DISEÑO IGUAL AL ANTERIOR PERO SIN EL ESPACIO EXTRA ABAJO
   const ticketHTML = `
     <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px; margin: 0;">
       
@@ -113,18 +113,19 @@ function enviarARawBT(id, info) {
         HORARIO: 8:30 AM A 7:30 PM
       </div>
       
-      <div style="font-size: 14px; margin-top: 12px; margin-bottom: 0; padding-bottom: 0;">
+      <div style="font-size: 14px; margin-top: 12px; margin-bottom: 0;">
         CONSERVE SU BOLETO<br>
         ¡GRACIAS POR SU PREFERENCIA!
       </div>
       </div>
   `;
 
+  // Volvemos a la limpieza y URL original que sí te funcionaba
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
   
-  // Agregamos el parámetro &cut=0 por si la app lo soporta para evitar avances de papel extra
-  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html + "&cut=0";
+  // URL limpia sin parámetros extraños
+  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
 
   let iframe = document.getElementById('hidden-print-iframe');
   if (!iframe) {
