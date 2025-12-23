@@ -4,6 +4,9 @@ const { v4: uuid } = require("uuid");
 const { createClient } = require("@supabase/supabase-js");
 const path = require("path");
 
+// ESTO ES CLAVE: Fuerza al servidor a usar hora de México internamente
+process.env.TZ = "America/Mexico_City";
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -45,7 +48,7 @@ app.post("/ticket", async (req, res) => {
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
 
   const id = uuid();
-  const now = new Date(); // HORA OFICIAL DEL SERVIDOR
+  const now = new Date(); 
 
   const { data, error } = await supabase.from("tickets").insert([{
     id,
@@ -54,11 +57,11 @@ app.post("/ticket", async (req, res) => {
     marca, modelo, color,
     hora_entrada: now.toISOString(),
     cobrado: false
-  }]).select(); // IMPORTANTE: Pedimos el dato insertado
+  }]).select();
 
   if (error) return res.status(500).json({ error: "Error DB" });
   
-  // Enviamos al cliente la hora que grabó el servidor
+  // Enviamos la hora exacta que el servidor acaba de guardar
   res.json({ id: data[0].id, hora_entrada: data[0].hora_entrada });
 });
 

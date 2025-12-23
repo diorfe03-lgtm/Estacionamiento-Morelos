@@ -56,9 +56,15 @@ let html5QrCode;
 
 // MODIFICADO: Ahora recibe 'horaServidor' y NO usa new Date() del celular
 function enviarARawBT(id, info, horaServidor) {
-  const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
-    hour: '2-digit', minute: '2-digit', day: '2-digit', 
-    month: '2-digit', year: 'numeric', hour12: true,
+  // Forzamos la conversión a la zona horaria local de México basada en el string del servidor
+  const dateObj = new Date(horaServidor);
+  const fechaOficial = dateObj.toLocaleString('es-MX', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric', 
+    hour12: true,
     timeZone: 'America/Mexico_City' 
   });
 
@@ -97,7 +103,7 @@ function enviarARawBT(id, info, horaServidor) {
       <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">CONSERVE SU BOLETO<br>¡GRACIAS POR SU PREFERENCIA!</div>
     </div>
   `;
-
+  // ... resto del código para RawBT
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
   const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
