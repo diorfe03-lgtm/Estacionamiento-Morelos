@@ -59,35 +59,52 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Usamos el formato de RawBT que permite estilos en texto plano
-    // [C] Centro, [L] Izquierda, [R] Derecha
-    // {b} Negrita, {/b} Cerrar negrita
-    // {h1} a {h4} para tamaños de texto
+    // Definición de comandos ESC/POS (Hexadecimal)
+    const ESC = '\x1B';
+    const GS  = '\x1D';
+    const JUST_CENTER = ESC + 'a' + '\x01';
+    const JUST_LEFT   = ESC + 'a' + '\x00';
+    const BOLD_ON     = ESC + 'E' + '\x01';
+    const BOLD_OFF    = ESC + 'E' + '\x00';
+    const SIZE_BIG    = GS  + '!' + '\x11'; // Doble alto y ancho
+    const SIZE_NORMAL = GS  + '!' + '\x00';
+
+    // Construcción del ticket con comandos reales
     let t = "";
-    t += "[C]{h2}ESTACIONAMIENTO{/h2}\n";
-    t += "[C]{h2}MORELOS 322{/h2}\n";
-    t += "[C]Comalcalco, Tabasco\n";
-    t += "[C]--------------------------------\n";
-    t += "[C]{h3}PLACAS:{/h3}\n";
-    t += "[C]{h1}" + info.placas.toUpperCase() + "{/h1}\n";
-    t += "[C]--------------------------------\n";
-    t += "[L]{b}MARCA:{/b} " + (info.marca || "---") + "\n";
-    t += "[L]{b}MODELO:{/b} " + (info.modelo || "---") + "\n";
-    t += "[L]{b}COLOR:{/b} " + (info.color || "---") + "\n";
-    t += "[L]{b}ENTRADA:{/b} " + fechaActual + "\n";
-    t += "[C]--------------------------------\n";
-    t += "[C]{b}HORARIO: 8:30AM - 7:30PM{/b}\n";
-    t += "[C]No nos hacemos responsables\n";
-    t += "[C]por robo o daños.\n";
-    t += "[C]{b}CONSERVE SU BOLETO{/b}\n";
-    t += "[C]--------------------------------\n";
-    t += "[C]{qrcode: " + id + "}\n"; // Formato correcto de QR para RawBT
+    
+    // Encabezado
+    t += JUST_CENTER + BOLD_ON + SIZE_BIG + "ESTACIONAMIENTO" + "\n";
+    t += "MORELOS 322" + "\n" + SIZE_NORMAL;
+    t += "Comalcalco, Tabasco" + "\n";
+    t += "--------------------------------" + "\n";
+    
+    // Placas
+    t += "PLACAS:" + "\n";
+    t += BOLD_ON + SIZE_BIG + info.placas.toUpperCase() + "\n" + SIZE_NORMAL + BOLD_OFF;
+    t += "--------------------------------" + "\n";
+    
+    // Datos del vehículo
+    t += JUST_LEFT;
+    t += "MARCA: " + (info.marca || "---") + "\n";
+    t += "MODELO: " + (info.modelo || "---") + "\n";
+    t += "COLOR: " + (info.color || "---") + "\n";
+    t += "ENTRADA: " + fechaActual + "\n";
+    
+    t += JUST_CENTER + "--------------------------------" + "\n";
+    t += BOLD_ON + "HORARIO: 8:30AM - 7:30PM" + BOLD_OFF + "\n";
+    t += "No nos hacemos responsables\npor robo o daños.\n";
+    t += BOLD_ON + "CONSERVE SU BOLETO" + BOLD_OFF + "\n";
+    t += "--------------------------------" + "\n\n";
+
+    // Comando para Código QR (Estándar ESC/POS)
+    // RawBT intercepta esta etiqueta específica si el modo texto falla
+    t += "[C]<qrcode size='10'>" + id + "</qrcode>\n";
+    
     t += "\n\n\n\n"; 
 
-    // IMPORTANTE: Cambiamos a data:application/vnd.rawbt.title
-    // Esto le dice a RawBT que use su motor de plantillas
-    const base64Text = btoa(unescape(encodeURIComponent(t)));
-    window.location.href = "rawbt:data:text/plain;base64," + base64Text;
+    // Enviamos como binario para que la impresora ejecute los comandos
+    const base64Data = btoa(unescape(encodeURIComponent(t)));
+    window.location.href = "rawbt:data:application/octet-stream;base64," + base64Data;
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
