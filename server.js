@@ -58,13 +58,9 @@ app.post("/pay/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-// NUEVO: ENDPOINT DE ADMINISTRACIÓN
 app.post("/corte-caja", async (req, res) => {
   if (req.body.password !== "1234") return res.status(401).json({ error: "Incorrecto" });
-  const { data, error } = await supabase.from("tickets")
-    .select("monto")
-    .eq("fecha", fechaCDMX())
-    .eq("cobrado", true);
+  const { data, error } = await supabase.from("tickets").select("monto").eq("fecha", fechaCDMX()).eq("cobrado", true);
   if (error) return res.status(500).json({ error: "Error DB" });
   const total = data.reduce((sum, t) => sum + Number(t.monto || 0), 0);
   res.json({ total, boletos: data.length });
@@ -72,10 +68,10 @@ app.post("/corte-caja", async (req, res) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// CORRECCIÓN PARA RENDER: Usar expresión regular en lugar de "*"
-app.get("/(.*)", (req, res) => {
+// RUTA SIMPLIFICADA PARA EVITAR EL ERROR DE RENDER
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor listo en puerto " + PORT));
+app.listen(PORT, () => console.log("Servidor listo"));
