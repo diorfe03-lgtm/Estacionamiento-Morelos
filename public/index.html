@@ -92,7 +92,8 @@ function enviarARawBT(id, info) {
 
   const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
   // Nota: RawBT procesará esto y si tienes activado "Auto-print" en la app, saldrá directo.
-  window.location.href = "rawbt:data:text/html;base64," + base64Html;
+ // Agregamos el parámetro "&auto=1" al final de la instrucción
+ window.location.href = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
 }
 
 function startScanner() {
