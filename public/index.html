@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Estacionamiento Pro</title>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -68,72 +69,88 @@
 const API = window.location.origin;
 let html5QrCode;
 
-// --- LÓGICA DE IMPRESIÓN ACTUALIZADA ---
+// --- LÓGICA DE IMPRESIÓN (CORREGIDA PARA RAWBT) ---
 function enviarARawBT(id, info) {
     const fechaActual = new Date().toLocaleString('es-MX', { 
         hour: '2-digit', minute: '2-digit', day: '2-digit', 
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // 1. Crear el diseño en un contenedor oculto
+    // 1. Crear el contenedor del ticket (Oculto)
     const tempDiv = document.createElement('div');
     tempDiv.style.width = '350px';
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '0';
     tempDiv.style.background = 'white';
-    tempDiv.style.padding = '10px';
+    tempDiv.style.padding = '15px';
     
     tempDiv.innerHTML = `
-        <div id="ticket-final" style="text-align: center; color: black; font-family: Arial;">
-            <b style="font-size: 22px;">ESTACIONAMIENTO</b><br>
-            <b style="font-size: 22px;">MORELOS 322</b><br>
+        <div style="text-align: center; color: black; font-family: Arial, sans-serif; background: white;">
+            <b style="font-size: 22px; display: block;">ESTACIONAMIENTO</b>
+            <b style="font-size: 22px; display: block;">MORELOS 322</b>
             <span style="font-size: 14px;">Morelos y Escobedo Centro, Comalcalco</span><br>
-            <div id="qrcode-local" style="margin: 10px auto; display: inline-block;"></div><br>
+            
+            <div id="qrcode-box" style="margin: 10px auto; display: inline-block;"></div><br>
+            
             <div style="border-top: 3px solid black; border-bottom: 3px solid black; margin: 10px 0; padding: 5px;">
-                <span style="font-size: 18px;">PLACAS:</span><br>
-                <b style="font-size: 40px;">${info.placas.toUpperCase()}</b>
+                <span style="font-size: 16px;">PLACAS:</span><br>
+                <b style="font-size: 44px; line-height: 1;">${info.placas.toUpperCase()}</b>
             </div>
-            <div style="text-align: left; font-size: 16px;">
+            
+            <div style="text-align: left; font-size: 17px; line-height: 1.2;">
                 <b>MARCA:</b> ${info.marca || '---'}<br>
                 <b>MODELO:</b> ${info.modelo || '---'}<br>
                 <b>COLOR:</b> ${info.color || '---'}<br>
                 <b>ENTRADA:</b> ${fechaActual}
             </div>
-            <div style="border: 2px solid black; margin: 10px 0; padding: 5px; font-weight: bold;">
+            
+            <div style="border: 2px solid black; margin: 12px 0; padding: 8px; font-weight: bold; font-size: 16px;">
                 HORARIO: 8:30 AM A 7:30 PM
             </div>
-            <p style="font-size: 11px; text-align: justify;">
-                No nos hacemos responsables por robo total o parcial, ni por objetos de valor no depositados en administración.
+            
+            <p style="font-size: 11px; text-align: justify; margin-bottom: 5px;">
+                AVISO: No nos hacemos responsables por robo total o parcial, ni por objetos de valor no depositados en administración.
             </p>
-            <b>CONSERVE SU BOLETO</b>
+            <b style="font-size: 14px;">¡CONSERVE SU BOLETO!</b>
         </div>
     `;
     document.body.appendChild(tempDiv);
 
-    // 2. Generar QR dentro del div oculto
-    new QRCode(tempDiv.querySelector('#qrcode-local'), {
-        text: id, width: 180, height: 180
+    // 2. Generar QR dentro del div
+    new QRCode(tempDiv.querySelector('#qrcode-box'), {
+        text: id,
+        width: 180,
+        height: 180,
+        correctLevel: QRCode.CorrectLevel.H
     });
 
-    // 3. Convertir a imagen y enviar
+    // 3. Tomar captura y enviar a RawBT
     setTimeout(() => {
-        html2canvas(tempDiv, { scale: 2 }).then(canvas => {
-            const imgData = canvas.toDataURL("image/png");
-            const base64Data = imgData.replace(/^data:image\/(png|jpg);base64,/, "");
+        html2canvas(tempDiv, { 
+            scale: 2,
+            backgroundColor: "#ffffff"
+        }).then(canvas => {
+            // Usamos JPEG para mejor compatibilidad y peso
+            const imgData = canvas.toDataURL("image/jpeg", 0.9);
             
-            // Enviamos como imagen pura para que RawBT no se trabe procesando HTML
-            const rawbtUrl = "rawbt:data:image/png;base64," + base64Data + "&auto=1";
+            // LIMPIEZA CRUCIAL DEL BASE64
+            const base64Data = imgData.replace(/^data:image\/(jpeg|jpg);base64,/, "");
+            
+            // Construcción del enlace RawBT
+            const rawbtUrl = "rawbt:data:image/jpeg;base64," + base64Data + "&auto=1";
             
             const link = document.createElement("a");
             link.href = rawbtUrl;
             link.click();
             
+            // Eliminar elemento temporal
             document.body.removeChild(tempDiv);
         });
-    }, 400);
+    }, 600); // Tiempo suficiente para que el QR se renderice
 }
 
-// --- RESTO DE FUNCIONES ---
+// --- FUNCIONES DE LA APP ---
 
 function startScanner() {
   document.getElementById("reader").classList.remove("hidden");
@@ -178,7 +195,7 @@ async function createTicket() {
     enviarARawBT(data.id, info);
     limpiarNuevo();
   } catch(e) {
-    alert("Error de conexión con el servidor");
+    alert("Error conectando con el servidor");
   }
 }
 
