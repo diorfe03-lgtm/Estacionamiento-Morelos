@@ -78,55 +78,56 @@ function enviarARawBT(id, info) {
     hour12: true 
   });
 
-  // DISEÑO AJUSTADO A 384px (Ancho real de cabezal térmico de 58mm)
+  // DISEÑO COMPACTO PERO GRANDE (Optimizado para 58mm / 384px)
   const ticketHTML = `
-    <div style="width: 384px; font-family: Arial, sans-serif; text-align: center; padding: 0; margin: 0; background-color: white;">
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px;">
       
-      <h1 style="margin: 0; font-size: 32px; font-weight: 900;">ESTACIONAMIENTO</h1>
-      <h2 style="margin: 5px 0; font-size: 22px;">MORELOS :)</h2>
+      <b style="font-size: 24px; display: block; margin-bottom: 2px;">ESTACIONAMIENTO</b>
+      <span style="font-size: 18px; display: block;">MORELOS :)</span>
       
-      <div style="margin: 10px auto; width: 250px;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${id}" width="250" height="250" style="display: block; margin: auto;" />
+      <div style="margin: 8px auto;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${id}" width="180" height="180" />
       </div>
 
-      <div style="text-align: left; padding: 0 10px; box-sizing: border-box;">
-        <div style="font-size: 24px; border-bottom: 3px solid #000; margin-bottom: 8px; padding-bottom: 5px;">
-            <b>PLACAS:</b> <span style="font-size: 34px; font-weight: bold;">${info.placas.toUpperCase()}</span>
+      <div style="text-align: left; margin: 0 5px;">
+        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0; margin-bottom: 8px;">
+          <b style="font-size: 20px;">PLACAS:</b> 
+          <b style="font-size: 28px; float: right;">${info.placas.toUpperCase()}</b>
+          <div style="clear: both;"></div>
         </div>
         
-        <div style="font-size: 20px; line-height: 1.2;">
+        <div style="font-size: 17px; line-height: 1.2;">
           <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
-          <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
-          <b>COLOR:</b> ${info.color.trim() || '---'}
+          <b>MOD:</b> ${info.modelo.trim() || '---'} | <b>COL:</b> ${info.color.trim() || '---'}
         </div>
         
-        <div style="border-top: 2px dashed #000; margin: 15px 0;"></div>
+        <div style="border-top: 1px dashed black; margin: 10px 0;"></div>
         
-        <div style="font-size: 19px;">
+        <div style="font-size: 17px;">
           <b>ENTRADA:</b> ${fechaActual}<br>
           <b>SALIDA:</b> POR DEFINIR
         </div>
       </div>
 
-      <div style="margin-top: 15px; font-size: 18px; font-weight: bold; border: 3px solid #000; padding: 10px; margin-left: 10px; margin-right: 10px;">
-        HORARIO DE SERVICIO:<br>
-        8:30 AM A 7:30 PM
+      <div style="margin-top: 12px; font-size: 16px; border: 2px solid black; padding: 6px; font-weight: bold;">
+        HORARIO: 8:30 AM A 7:30 PM
       </div>
       
-      <div style="font-size: 16px; margin: 15px 0; font-weight: bold;">
+      <div style="font-size: 14px; margin-top: 12px;">
         CONSERVE SU BOLETO<br>
         ¡GRACIAS POR SU PREFERENCIA!
       </div>
       
-      <div style="height: 40px;">.</div> </div>
+      <div style="height: 50px;">.</div>
+    </div>
   `;
 
-  // Codificación segura
-  const cleanHtml = ticketHTML.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+  // Limpieza extrema de código para que RawBT no se pierda
+  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
   const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
 
-  // Iframe para evitar salir de la app
+  // Ejecución mediante iframe
   let iframe = document.getElementById('hidden-print-iframe');
   if (!iframe) {
     iframe = document.createElement('iframe');
