@@ -59,40 +59,36 @@ function enviarARawBT(id, info) {
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // COMANDOS ESC/POS PUROS (Formato Hexadecimal compatible con RawBT)
-    // \x1B\x45\x01 = Negrita ON | \x1D\x21\x11 = Tamaño Doble
-    const ticket = [
-        "\x1B\x61\x01", // Centrado
-        "\x1B\x45\x01", // Negrita ON
-        "ESTACIONAMIENTO\n",
-        "MORELOS 322\n",
-        "\x1B\x45\x00", // Negrita OFF
-        "Comalcalco, Tabasco\n",
-        "--------------------------------\n",
-        "PLACAS:\n",
-        "\x1D\x21\x11", // Tamaño DOBLE (Alto y Ancho)
-        info.placas.toUpperCase() + "\n",
-        "\x1D\x21\x00", // Tamaño NORMAL
-        "--------------------------------\n",
-        "\x1B\x61\x00", // Alineación Izquierda
-        "MARCA: " + (info.marca || "---") + "\n",
-        "MODELO: " + (info.modelo || "---") + "\n",
-        "COLOR: " + (info.color || "---") + "\n",
-        "ENTRADA: " + fechaActual + "\n",
-        "\x1B\x61\x01", // Centrado
-        "--------------------------------\n",
-        "\x1B\x45\x01", "CONSERVE SU BOLETO\n", "\x1B\x45\x00",
-        "--------------------------------\n",
-        "\n",
-        // Comando especial de RawBT para el QR que SI funciona en modo texto
-        "[C]<qrcode size='10'>" + id + "</qrcode>\n",
-        "\n\n\n\n" // Espacio para corte
-    ].join("");
+    // Usamos etiquetas de formato nativas de RawBT que funcionan en text/plain
+    // [C] = Centro, [L] = Izquierda
+    // {b} = Negrita, {h1} = Tamaño grande
+    let t = "";
+    t += "[C]{h2}ESTACIONAMIENTO{/h2}\n";
+    t += "[C]{h2}MORELOS 322{/h2}\n";
+    t += "[C]Comalcalco, Tabasco\n";
+    t += "[C]--------------------------------\n";
+    t += "[C]{h3}PLACAS:{/h3}\n";
+    t += "[C]{h1}" + info.placas.toUpperCase() + "{/h1}\n";
+    t += "[C]--------------------------------\n";
+    t += "[L]{b}MARCA:{/b} " + (info.marca || "---") + "\n";
+    t += "[L]{b}MODELO:{/b} " + (info.modelo || "---") + "\n";
+    t += "[L]{b}COLOR:{/b} " + (info.color || "---") + "\n";
+    t += "[L]{b}ENTRADA:{/b} " + fechaActual + "\n";
+    t += "[C]--------------------------------\n";
+    t += "[C]{b}HORARIO: 8:30AM - 7:30PM{/b}\n";
+    t += "[C]No nos hacemos responsables\n";
+    t += "[C]por robo o daños.\n";
+    t += "[C]{b}CONSERVE SU BOLETO{/b}\n";
+    t += "[C]--------------------------------\n";
+    t += "[C]<qrcode size='10'>" + id + "</qrcode>\n";
+    t += "\n\n\n\n"; 
 
-    // Convertimos a Base64 pero bajo el esquema 'application/octet-stream'
-    // Esto le dice a RawBT: "No proceses nada, solo suelta estos bytes a la impresora"
-    const base64Encoded = btoa(unescape(encodeURIComponent(ticket)));
-    window.location.href = "rawbt:data:application/octet-stream;base64," + base64Encoded;
+    // Codificación segura para evitar el "Empty print job"
+    const utf8Text = unescape(encodeURIComponent(t));
+    const base64Text = btoa(utf8Text);
+    
+    // Cambiamos a text/plain que es el que tu impresora aceptó antes
+    window.location.href = "rawbt:data:text/plain;base64," + base64Text;
 }
 
 // FUNCIONES RESTANTES (Sin cambios)
