@@ -71,8 +71,8 @@ app.post("/corte-caja", async (req, res) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ÚNICO CAMBIO: Se agregó la barra / antes del * para que Render no de error
-app.get("/*", (req, res) => {
+// ESTA ES LA ÚNICA FORMA QUE NODE 22 ACEPTA AHORA PARA EL COMODÍN
+app.get("/(.*)", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
