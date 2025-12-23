@@ -78,9 +78,9 @@ function enviarARawBT(id, info) {
     hour12: true 
   });
 
-  // DISEÑO IGUAL AL ANTERIOR PERO SIN EL ESPACIO EXTRA ABAJO
+  // DISEÑO SIN ESPACIOS EXTRAS Y CON MARGEN INFERIOR AJUSTADO
   const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px; margin: 0;">
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px; margin: 0; overflow: hidden;">
       
       <b style="font-size: 24px; display: block; margin-bottom: 2px;">ESTACIONAMIENTO</b>
       <span style="font-size: 18px; display: block;">MORELOS :)</span>
@@ -113,29 +113,29 @@ function enviarARawBT(id, info) {
         HORARIO: 8:30 AM A 7:30 PM
       </div>
       
-      <div style="font-size: 14px; margin-top: 12px; margin-bottom: 0;">
+      <div style="font-size: 14px; margin-top: 12px; margin-bottom: -10px; padding-bottom: 0;">
         CONSERVE SU BOLETO<br>
         ¡GRACIAS POR SU PREFERENCIA!
       </div>
-      </div>
+    </div>
   `;
 
-  // Volvemos a la limpieza y URL original que sí te funcionaba
+  // Limpieza de código
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
-  
-  // URL limpia sin parámetros extraños
   const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
 
-  let iframe = document.getElementById('hidden-print-iframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.id = 'hidden-print-iframe';
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-  }
-  
-  iframe.src = rawbtUrl;
+  // --- AGREGAMOS EL RETRASO DE 1 SEGUNDO (1000ms) ---
+  setTimeout(() => {
+    let iframe = document.getElementById('hidden-print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'hidden-print-iframe';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+    }
+    iframe.src = rawbtUrl;
+  }, 1000); 
 }
 
 function startScanner() {
