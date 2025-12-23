@@ -78,9 +78,9 @@ function enviarARawBT(id, info) {
     hour12: true 
   });
 
-  // DISEÑO COMPACTO PERO GRANDE (Optimizado para 58mm / 384px)
+  // DISEÑO AJUSTADO SIN ESPACIOS SOBRANTES AL FINAL
   const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px;">
+    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px; margin: 0;">
       
       <b style="font-size: 24px; display: block; margin-bottom: 2px;">ESTACIONAMIENTO</b>
       <span style="font-size: 18px; display: block;">MORELOS :)</span>
@@ -113,21 +113,19 @@ function enviarARawBT(id, info) {
         HORARIO: 8:30 AM A 7:30 PM
       </div>
       
-      <div style="font-size: 14px; margin-top: 12px;">
+      <div style="font-size: 14px; margin-top: 12px; margin-bottom: 0; padding-bottom: 0;">
         CONSERVE SU BOLETO<br>
         ¡GRACIAS POR SU PREFERENCIA!
       </div>
-      
-      <div style="height: 50px;">.</div>
-    </div>
+      </div>
   `;
 
-  // Limpieza extrema de código para que RawBT no se pierda
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
-  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
+  
+  // Agregamos el parámetro &cut=0 por si la app lo soporta para evitar avances de papel extra
+  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html + "&cut=0";
 
-  // Ejecución mediante iframe
   let iframe = document.getElementById('hidden-print-iframe');
   if (!iframe) {
     iframe = document.createElement('iframe');
