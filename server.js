@@ -83,9 +83,12 @@ app.get("/ticket/:id", async (req, res) => {
   if (error || !t) return res.json({ error: "Boleto no existe" });
   if (t.cobrado) return res.json({ error: "Este boleto ya fue cobrado" });
 
+  const ahora = new Date().toISOString();
+
   res.json({
     placas: t.placas,
     hora_entrada_cdmx: horaCDMX(t.hora_entrada),
+    hora_salida_cdmx: horaCDMX(ahora),
     monto: calcularMonto(t.hora_entrada)
   });
 });

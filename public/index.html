@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Estacionamiento</title>
+<title>Estacionamiento Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <style>
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
   .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
@@ -13,16 +15,18 @@
   .primary { background:#2a5298; color:white; }
   .secondary { background:#f1f5f9; color: #1e3c72; }
   .success { background:#16a34a; color:white; }
+  .warning { background:#fef08a; color: #854d0e; }
   input { width:100%; padding:12px; margin:6px 0; border-radius:10px; border:1px solid #ccc; box-sizing: border-box; font-size: 16px; }
   .card { background:#f8fafc; padding:15px; border-radius:12px; margin-top:15px; border: 1px solid #e2e8f0; }
   .hidden { display:none; }
-  .total { font-size:24px; color:#16a34a; font-weight:bold; margin: 10px 0; }
-  .info-pago p { margin: 8px 0; font-size: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+  .total { font-size:24px; color:#16a34a; font-weight:bold; }
+  #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="app">
   <h2>🚗 Estacionamiento</h2>
+  
   <button class="primary" onclick="showNew()">Nuevo boleto</button>
   <button class="secondary" onclick="showPay()">Cobrar Boleto</button>
 
@@ -31,13 +35,18 @@
     <input placeholder="Marca" id="marca">
     <input placeholder="Modelo" id="modelo">
     <input placeholder="Color" id="color">
-    <button class="primary" onclick="createTicket()">Generar e Imprimir</button>
+    <button class="primary" onclick="createTicket()">Imprimir Ticket Directo</button>
   </div>
 
   <div id="payTicket" class="card hidden">
+    <button class="warning" onclick="startScanner()">📷 Escanear Código QR</button>
+    <div id="reader" class="hidden"></div>
+    
     <input placeholder="ID del Boleto" id="qrId">
     <button class="secondary" onclick="scanQr()">Buscar Datos</button>
+    
     <div id="chargeInfo" class="info-pago"></div>
+    
     <div id="confirmArea" class="hidden">
       <label style="display:block; margin: 15px 0;"><input type="checkbox" id="confirmPaid"> Confirmar Pago</label>
       <button class="success" onclick="confirmPayment()">Finalizar Cobro</button>
@@ -56,64 +65,109 @@
 
 <script>
 const API = window.location.origin;
+let html5QrCode;
 
-function showNew() { newTicket.classList.remove("hidden"); payTicket.classList.add("hidden"); limpiarNuevo(); }
-function showPay() { payTicket.classList.remove("hidden"); newTicket.classList.add("hidden"); limpiarCobro(); }
-function limpiarNuevo() { placas.value=""; marca.value=""; modelo.value=""; color.value=""; }
-function limpiarCobro() { qrId.value=""; chargeInfo.innerHTML=""; confirmPaid.checked=false; confirmArea.classList.add("hidden"); }
+// --- LÓGICA DE IMPRESIÓN (RAWBT) ---
+function enviarARawBT(id, info) {
+  const fecha = new Date().toLocaleString('es-MX');
+  const ticketHTML = `
+    <div style="width: 200px; font-family: monospace; text-align: center; background: white; padding: 10px;">
+      <h3 style="margin:0;">ESTACIONAMIENTO</h3>
+      <p style="margin:0;">MORELOS :)</p>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" style="margin:10px 0;"/>
+      <div style="text-align: left; font-size: 12px;">
+        <p><b>PLACAS:</b> ${info.placas.toUpperCase()}</p>
+        <p><b>MARCA:</b> ${info.marca || "----"}</p>
+        <p><b>ENTRADA:</b> ${fecha}</p>
+        <p><b>ID:</b> ${id.substring(0,8)}</p>
+      </div>
+      <p>----------------------</p>
+      <p>Guarde su boleto</p>
+    </div>
+  `;
+  const base64Html = btoa(unescape(encodeURIComponent(ticketHTML)));
+  window.location.href = "rawbt:html/" + base64Html;
+}
 
+// --- LÓGICA DEL ESCÁNER (CÁMARA) ---
+function startScanner() {
+  document.getElementById("reader").classList.remove("hidden");
+  html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" }, 
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (decodedText) => {
+      document.getElementById("qrId").value = decodedText;
+      stopScanner();
+      scanQr(); // Busca los datos automáticamente al detectar el QR
+    },
+    (errorMessage) => { /* buscando... */ }
+  ).catch(err => alert("Error de cámara: " + err));
+}
+
+function stopScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      document.getElementById("reader").classList.add("hidden");
+    });
+  }
+}
+
+// --- FUNCIONES PRINCIPALES ---
 async function createTicket() {
   if (!placas.value.trim()) return alert("Las PLACAS son obligatorias.");
   const info = { placas: placas.value, marca: marca.value, modelo: modelo.value, color: color.value };
+  
   const res = await fetch(API + "/ticket", {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify(info)
   });
   const data = await res.json();
-  printTicket(data.id, info);
+  
+  enviarARawBT(data.id, info); // Envía a la impresora térmica
   limpiarNuevo();
-  newTicket.classList.add("hidden");
-}
-
-function printTicket(id, info) {
-  const win = window.open("", "", "width=300,height=600");
-  win.document.write(`<html><body style="font-family:monospace;text-align:center;">
-    <h3>ESTACIONAMIENTO</h3><canvas id="qr"></canvas>
-    <div style="text-align:left;font-size:12px;margin:10px;">
-      <p><strong>Placas:</strong> ${info.placas}</p>
-      <p><strong>Marca:</strong> ${info.marca || "----"}</p>
-      <p><strong>Modelo:</strong> ${info.modelo || "----"}</p>
-      <p><strong>Color:</strong> ${info.color || "----"}</p>
-      <p><strong>Entrada:</strong> ${new Date().toLocaleTimeString()}</p>
-    </div>
-    <p>ID: ${id.substring(0,8)}</p>
-  </body></html>`);
-  win.document.close();
-  QRCode.toCanvas(win.document.getElementById("qr"), id, { width: 160 }, () => { win.print(); win.close(); });
 }
 
 async function scanQr() {
-  const res = await fetch(API + "/ticket/" + qrId.value);
+  const idBuscado = document.getElementById("qrId").value;
+  if(!idBuscado) return;
+  
+  const res = await fetch(API + "/ticket/" + idBuscado);
   const data = await res.json();
-  if (data.error) { chargeInfo.innerHTML = `<p style="color:red;">${data.error}</p>`; return; }
-  chargeInfo.innerHTML = `
-    <p><strong>Placa:</strong> ${data.placas}</p>
-    <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
-    <p><strong>Precio a cobrar:</strong></p><div class="total">$${data.monto}.00</div>
+  
+  if (data.error) {
+    document.getElementById("chargeInfo").innerHTML = `<p style="color:red;">${data.error}</p>`;
+    document.getElementById("confirmArea").classList.add("hidden");
+    return;
+  }
+
+  document.getElementById("chargeInfo").innerHTML = `
+    <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+      <p><strong>Placa:</strong> ${data.placas}</p>
+      <p><strong>Entrada:</strong> ${data.hora_entrada_cdmx}</p>
+      <p><strong>Salida:</strong> ${data.hora_salida_cdmx || new Date().toLocaleTimeString()}</p>
+      <p>Precio a cobrar:</p>
+      <div class="total">$${data.monto}.00</div>
+    </div>
   `;
-  confirmArea.classList.remove("hidden");
+  document.getElementById("confirmArea").classList.remove("hidden");
 }
 
 async function confirmPayment() {
-  if (!confirmPaid.checked) return alert("Confirma el cobro en la casilla.");
-  await fetch(API + "/pay/" + qrId.value, { method:"POST" });
-  alert("¡Cobro Exitoso!");
-  limpiarCobro();
-  payTicket.classList.add("hidden");
+  const idBuscado = document.getElementById("qrId").value;
+  if (!confirmPaid.checked) return alert("Confirma el cobro.");
+  
+  await fetch(API + "/pay/" + idBuscado, { method:"POST" });
+  alert("¡Pago registrado!");
+  showPay(); // Resetea la vista
 }
 
-function toggleCorte() { corteSection.classList.toggle("hidden"); corteResultado.innerHTML=""; }
-
+// Auxiliares
+function showNew() { newTicket.classList.remove("hidden"); payTicket.classList.add("hidden"); stopScanner(); }
+function showPay() { payTicket.classList.remove("hidden"); newTicket.classList.add("hidden"); limpiarCobro(); }
+function limpiarNuevo() { placas.value=""; marca.value=""; modelo.value=""; color.value=""; }
+function limpiarCobro() { qrId.value=""; chargeInfo.innerHTML=""; confirmPaid.checked=false; confirmArea.classList.add("hidden"); stopScanner(); }
+function toggleCorte() { corteSection.classList.toggle("hidden"); }
 async function obtenerCorte() {
   const res = await fetch(API + "/corte-caja", {
     method: "POST", headers: {"Content-Type":"application/json"},
@@ -121,9 +175,7 @@ async function obtenerCorte() {
   });
   const data = await res.json();
   if (res.status === 401) return alert("Clave Incorrecta");
-  corteResultado.innerHTML = `<div style="margin-top:10px;border-top:1px solid #ccc;">
-    <p>Fecha: ${data.fecha}</p><p>Boletos: ${data.boletos}</p><p class="total">Total: $${data.total}.00</p>
-  </div>`;
+  document.getElementById("corteResultado").innerHTML = `<p class="total">Total de hoy: $${data.total}.00</p><p>Boletos: ${data.boletos}</p>`;
 }
 </script>
 </body>
