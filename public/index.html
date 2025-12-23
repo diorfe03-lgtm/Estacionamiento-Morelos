@@ -9,8 +9,8 @@
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
   .app { max-width: 420px; margin: auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
   h2 { text-align: center; color:#2a5298; margin-top: 0; }
-  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
   .primary { background:#2a5298; color:white; }
   .secondary { background:#f1f5f9; color: #1e3c72; }
   .success { background:#16a34a; color:white; }
@@ -96,19 +96,21 @@ function enviarARawBT(id, info, horaServidor) {
         HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM
       </div>
       <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
-        <b>AVISO IMPORTANTE:</b> No nos hace responsable por robo o daños.
+        <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
       </div>
-      <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">CONSERVE SU BOLETO</div>
+      <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">CONSERVE SU BOLETO<br>¡GRACIAS POR SU PREFERENCIA!</div>
     </div>
   `;
 
+  // Limpieza de iframe para evitar que se trabe con el anterior
   const oldIframe = document.getElementById('hidden-print-iframe');
   if(oldIframe) oldIframe.remove();
 
   const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
-  
-  // PARÁMETRO CLAVE: return_url le dice a RawBT a dónde regresar al terminar
+
   const returnUrl = window.location.href;
+
+  // AGREGAMOS EL PARÁMETRO DE RETORNO AL FINAL DE LA URL RAWBT
   const rawbtUrl = "rawbt:data:text/html;base64," + 
                    btoa(unescape(encodeURIComponent(cleanHtml))) + 
                    "&return_url=" + encodeURIComponent(returnUrl);
@@ -121,13 +123,12 @@ function enviarARawBT(id, info, horaServidor) {
 }
 
 async function createTicket() {
-  const pInput = document.getElementById("placas");
-  const pVal = pInput.value.trim();
+  const pVal = document.getElementById("placas").value.trim();
   if (!pVal) return alert("Placas obligatorias");
 
   const btn = document.getElementById("btnCreate");
   btn.disabled = true;
-  btn.innerText = "Imprimiendo...";
+  btn.innerText = "Procesando...";
 
   const info = { 
     placas: pVal, 
@@ -146,17 +147,16 @@ async function createTicket() {
 
     if(data.id) {
       enviarARawBT(data.id, info, data.hora_entrada);
-      // Limpiar campos para el siguiente
+      // Limpiar campos inmediatamente después de éxito
       document.querySelectorAll("#newTicket input").forEach(i => i.value = "");
-      // Esperar un poco para cerrar el panel y que el usuario vea el éxito
-      setTimeout(() => {
-          showNew();
-          btn.disabled = false;
-          btn.innerText = "Imprimir Ticket";
-      }, 1000);
+      alert("Ticket Creado Correctamente");
+      showNew(); // Esto oculta el panel
+    } else {
+      alert("Error al crear ticket");
     }
   } catch (e) {
     alert("Error de conexión");
+  } finally {
     btn.disabled = false;
     btn.innerText = "Imprimir Ticket";
   }
@@ -195,9 +195,12 @@ async function obtenerCorte() {
     body: JSON.stringify({ password: pass }) 
   });
   const data = await res.json();
-  if(data.error) return alert("Incorrecto");
+  if(data.error) return alert("Contraseña Incorrecta");
   document.getElementById("adminResult").innerHTML = `
-    <div class="card"><p>Total: <b>$${data.total}.00</b></p><p>Boletos: <b>${data.boletos}</b></p></div>`;
+    <div class="card">
+      <p>Monto Total: <b style="color:#16a34a; font-size:20px;">$${data.total}.00</b></p>
+      <p>Coches Totales: <b>${data.boletos}</b></p>
+    </div>`;
 }
 
 function showNew() { 
@@ -223,7 +226,7 @@ function startScanner() {
         document.getElementById("reader").classList.add("hidden"); 
         scanQr(); 
       });
-  });
+  }).catch(err => alert("Error al abrir cámara"));
 }
 </script>
 </body>
