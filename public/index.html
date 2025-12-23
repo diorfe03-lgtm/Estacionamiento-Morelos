@@ -6,6 +6,7 @@
 <title>Estacionamiento Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
   body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); margin: 0; padding: 20px; }
@@ -69,78 +70,73 @@ let html5QrCode;
 
 // --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
 function enviarARawBT(id, info) {
-  // 1. Formateo de fecha y hora local
-  const fechaActual = new Date().toLocaleString('es-MX', { 
-    hour: '2-digit', minute: '2-digit', day: '2-digit', 
-    month: '2-digit', year: 'numeric', hour12: true 
-  });
+    const fechaActual = new Date().toLocaleString('es-MX', { 
+        hour: '2-digit', minute: '2-digit', day: '2-digit', 
+        month: '2-digit', year: 'numeric', hour12: true 
+    });
 
-  // 2. Diseño del Ticket XL optimizado para 58mm (384px)
-  const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
-      
-      <div style="margin-bottom: 5px;">
-        <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
-        <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
-        <span style="font-size: 15px; display: block; line-height: 1.1;">
-          Morelos y Escobedo Centro<br>
-          Comalcalco, Tabasco
-        </span>
-      </div>
-      
-      <div style="margin: 5px auto;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=210x210&data=${id}" width="210" height="210" style="display: block; margin: auto;" />
-      </div>
+    // Creamos un elemento invisible para generar el QR
+    const qrDiv = document.createElement('div');
+    const qrcode = new QRCode(qrDiv, {
+        text: id,
+        width: 250,
+        height: 250
+    });
 
-      <div style="text-align: left; margin: 5px 10px;">
-        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
-          <b style="font-size: 20px;">PLACAS:</b>
-          <b style="font-size: 44px; display: block; text-align: center; line-height: 1; margin-top: 2px;">${info.placas.toUpperCase()}</b>
-        </div>
-        
-        <div style="font-size: 19px; line-height: 1.2;">
-          <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
-          <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
-          <b>COLOR:</b> ${info.color.trim() || '---'}
-        </div>
-        
-        <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
-        
-        <div style="font-size: 18px;">
-          <b>ENTRADA:</b> ${fechaActual}<br>
-          <b>SALIDA:</b> POR DEFINIR
-        </div>
-      </div>
+    // Esperamos un instante mínimo a que la librería genere la imagen
+    setTimeout(() => {
+        const qrImageBase64 = qrDiv.querySelector('img').src;
 
-      <div style="margin: 10px; font-size: 17px; border: 2px solid black; padding: 8px; font-weight: bold;">
-        HORARIO DE SERVICIO:<br>
-        8:30 AM A 7:30 PM
-      </div>
-      
-      <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
-        <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
-      </div>
+        const ticketHTML = `
+        <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
+            <div style="margin-bottom: 5px;">
+                <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
+                <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
+                <span style="font-size: 15px; display: block; line-height: 1.1;">
+                    Morelos y Escobedo Centro<br> Comalcalco, Tabasco
+                </span>
+            </div>
+            
+            <div style="margin: 5px auto;">
+                <img src="${qrImageBase64}" width="200" height="200" style="display: block; margin: auto;" />
+            </div>
 
-      <div style="font-size: 15px; margin-top: 10px; font-weight: bold; margin-bottom: 5px;">
-        CONSERVE SU BOLETO<br>
-        ¡GRACIAS POR SU PREFERENCIA!
-      </div>
-    </div>
-  `;
+            <div style="text-align: left; margin: 5px 10px;">
+                <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
+                    <b style="font-size: 20px;">PLACAS:</b>
+                    <b style="font-size: 44px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
+                </div>
+                <div style="font-size: 19px; line-height: 1.2;">
+                    <b>MARCA:</b> ${info.marca.trim() || '---'}<br>
+                    <b>MODELO:</b> ${info.modelo.trim() || '---'}<br>
+                    <b>COLOR:</b> ${info.color.trim() || '---'}
+                </div>
+                <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
+                <div style="font-size: 18px;">
+                    <b>ENTRADA:</b> ${fechaActual}<br>
+                    <b>SALIDA:</b> POR DEFINIR
+                </div>
+            </div>
 
-  // 3. Limpieza profunda de espacios para evitar errores en RawBT
-  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
-  
-  // 4. Codificación Base64 compatible con acentos y caracteres especiales
-  const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
-  
-  // 5. URL con parámetro de auto-impresión
-  const rawbtUrl = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
+            <div style="margin: 10px; font-size: 17px; border: 2px solid black; padding: 8px; font-weight: bold;">
+                HORARIO DE SERVICIO:<br> 8:30 AM A 7:30 PM
+            </div>
+            
+            <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
+                <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
+            </div>
 
-  // 6. Ejecución directa
-  // Al tener configurado "Abrir de forma predeterminada" en Android, 
-  // esto saltará directamente a la impresión.
-  window.location.href = rawbtUrl;
+            <div style="font-size: 15px; margin-top: 10px; font-weight: bold; margin-bottom: 5px;">
+                CONSERVE SU BOLETO<br> ¡GRACIAS POR SU PREFERENCIA!
+            </div>
+        </div>`;
+
+        const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
+        const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
+        const rawbtUrl = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
+
+        window.location.href = rawbtUrl;
+    }, 100); // 100ms es imperceptible pero suficiente para generar el QR local
 }
 
 function startScanner() {
