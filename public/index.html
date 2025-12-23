@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Estacionamiento Pro</title>
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -68,24 +67,27 @@
 const API = window.location.origin;
 let html5QrCode;
 
-// --- LÓGICA DE IMPRESIÓN (TEXTO GRANDE + AUTOMÁTICO) ---
+// --- LÓGICA DE IMPRESIÓN ACTUALIZADA ---
 function enviarARawBT(id, info) {
     const fechaActual = new Date().toLocaleString('es-MX', { 
         hour: '2-digit', minute: '2-digit', day: '2-digit', 
         month: '2-digit', year: 'numeric', hour12: true 
     });
 
-    // Creamos un elemento invisible para generar el QR
+    // Crear contenedor temporal para el QR
     const qrDiv = document.createElement('div');
     const qrcode = new QRCode(qrDiv, {
         text: id,
         width: 250,
-        height: 250
+        height: 250,
+        correctLevel : QRCode.CorrectLevel.H
     });
 
-    // Esperamos un instante mínimo a que la librería genere la imagen
+    // Retraso de 250ms para asegurar que el QR se dibuje en memoria
     setTimeout(() => {
-        const qrImageBase64 = qrDiv.querySelector('img').src;
+        const qrImg = qrDiv.querySelector('img');
+        if(!qrImg) return alert("Error generando QR local");
+        const qrImageBase64 = qrImg.src;
 
         const ticketHTML = `
         <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0;">
@@ -135,9 +137,15 @@ function enviarARawBT(id, info) {
         const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
         const rawbtUrl = "rawbt:data:text/html;base64," + base64Html + "&auto=1";
 
-        window.location.href = rawbtUrl;
-    }, 100); // 100ms es imperceptible pero suficiente para generar el QR local
+        // Método de clic simulado para saltar bloqueos de Android/Chrome
+        const link = document.createElement("a");
+        link.href = rawbtUrl;
+        link.click();
+        
+    }, 500); 
 }
+
+// --- RESTO DE FUNCIONES ---
 
 function startScanner() {
   document.getElementById("reader").classList.remove("hidden");
@@ -173,14 +181,17 @@ async function createTicket() {
     color: document.getElementById("color").value 
   };
   
-  const res = await fetch(API + "/ticket", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify(info)
-  });
-  const data = await res.json();
-  
-  enviarARawBT(data.id, info);
-  limpiarNuevo();
+  try {
+    const res = await fetch(API + "/ticket", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(info)
+    });
+    const data = await res.json();
+    enviarARawBT(data.id, info);
+    limpiarNuevo();
+  } catch(e) {
+    alert("Error de conexión con el servidor");
+  }
 }
 
 async function scanQr() {
