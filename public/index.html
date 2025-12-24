@@ -68,46 +68,45 @@ function enviarARawBT(id, info, horaServidor, folio) {
   });
 
   const ticketHTML = `
-    <div style="width: 260px; font-family: sans-serif; text-align: center; color: black; background: white; padding: 2px; margin: 0; line-height: 1.1;">
+    <div style="width: 270px; background-color: white; color: black; font-family: sans-serif; padding: 10px; margin: 0 auto; text-align: center;">
       
-      <div style="border-bottom: 1px solid black; padding-bottom: 2px; margin-bottom: 5px;">
-        <span style="float: left; font-size: 16px; font-weight: bold;">#${folio}</span>
+      <div style="display: block; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px;">
+        <span style="float: left; font-size: 14px; font-weight: bold;">#${folio}</span>
         <span style="font-size: 14px; font-weight: bold;">MORELOS 322</span>
         <div style="clear: both;"></div>
       </div>
-      
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="display: block; margin: 0 auto;" />
-      
-      <div style="font-size: 16px; font-weight: bold; margin-top: 2px;">ID: ${id}</div>
 
-      <div style="text-align: left; margin: 5px 0;">
-        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 2px 0;">
-          <span style="font-size: 11px;">PLACAS:</span>
-          <b style="font-size: 22px; float: right; line-height: 0.9;">${info.placas.toUpperCase()}</b>
-          <div style="clear: both;"></div>
-        </div>
-        
-        <div style="font-size: 11px; margin-top: 3px;">
-          <b>AUTO:</b> ${info.marca || ''} ${info.color || ''}<br>
-          <b>ENTRADA:</b> ${fechaOficial}
-        </div>
+      <div style="margin: 10px 0;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${id}" width="180" height="180" style="display: block; margin: 0 auto;" />
+        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">ID: ${id}</div>
       </div>
 
-      <div style="font-size: 10px; border: 1px solid black; font-weight: bold; margin-bottom: 3px;">
+      <div style="text-align: left; border-top: 2px solid black; border-bottom: 2px solid black; padding: 4px 0; margin-bottom: 5px;">
+        <span style="font-size: 11px; display: block;">PLACAS:</span>
+        <div style="font-size: 26px; font-weight: bold; text-align: center; width: 100%;">${info.placas.toUpperCase()}</div>
+      </div>
+      
+      <div style="text-align: left; font-size: 12px; line-height: 1.2;">
+        <b>AUTO:</b> ${info.marca || ''} ${info.color || ''}<br>
+        <b>ENTRADA:</b> ${fechaOficial}
+      </div>
+
+      <div style="margin: 8px 0; font-size: 11px; border: 1px solid black; font-weight: bold; padding: 2px;">
         8:30 AM A 7:30 PM
       </div>
 
-      <div style="font-size: 9px; line-height: 1; font-weight: bold;">
+      <div style="font-size: 9px; line-height: 1.1; text-align: justify;">
         No nos hacemos responsables por robo total o parcial de los autos ni por objetos de valor.
       </div>
-    </div>
+      
+      <div style="height: 20px;"></div> </div>
   `;
 
-  // Limpieza total de código para URL limpia
-  const cleanHtml = ticketHTML.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+  // Limpieza agresiva de caracteres
+  const cleanHtml = ticketHTML.replace(/\s+/g, ' ').trim();
   const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
   
-  // Enviar a RawBT
+  // Intento de apertura directa
   window.location.href = "rawbt:data:text/html;base64," + base64Html;
 }
 
