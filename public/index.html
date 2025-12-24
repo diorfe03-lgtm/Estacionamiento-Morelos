@@ -68,39 +68,47 @@ function enviarARawBT(id, info, horaServidor, folio) {
   });
 
   const ticketHTML = `
-    <div style="width: 350px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0; position: relative;">
-      <div style="position: absolute; top: 0; left: 0; font-size: 24px; font-weight: bold;">#${folio}</div>
-      <div style="margin-bottom: 5px; padding-top: 5px;">
-        <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
-        <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
-        <span style="font-size: 15px; display: block; line-height: 1.1;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
+    <div style="width: 320px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 2px; margin: 0; position: relative;">
+      <div style="position: absolute; top: 0; left: 0; font-size: 20px; font-weight: bold;">#${folio}</div>
+      
+      <div style="margin-bottom: 2px; padding-top: 2px;">
+        <b style="font-size: 19px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
+        <b style="font-size: 19px; display: block; margin-bottom: 2px;">MORELOS 322</b>
+        <span style="font-size: 12px; display: block; line-height: 1;">Morelos y Escobedo Centro, Comalcalco</span>
       </div>
-      <div style="margin: 5px auto;">
+      
+      <div style="margin: 0 auto;">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="display: block; margin: auto;" />
-        <div style="font-size: 24px; font-weight: bold; margin-top: 5px;">ID: ${id}</div>
+        <div style="font-size: 20px; font-weight: bold; margin-top: -2px;">ID: ${id}</div>
       </div>
-      <div style="text-align: left; margin: 5px 10px;">
-        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
-          <b style="font-size: 20px;">PLACAS:</b>
-          <b style="font-size: 44px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
+
+      <div style="text-align: left; margin: 2px 8px;">
+        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 2px 0; margin-bottom: 4px;">
+          <b style="font-size: 14px;">PLACAS:</b>
+          <b style="font-size: 30px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
         </div>
-        <div style="font-size: 19px; line-height: 1.2;">
-          <b>MARCA:</b> ${info.marca || '---'}<br>
-          <b>MODELO:</b> ${info.modelo || '---'}<br>
+        
+        <div style="font-size: 15px; line-height: 1.1;">
+          <b>MARCA:</b> ${info.marca || '---'} | <b>MOD:</b> ${info.modelo || '---'}<br>
           <b>COLOR:</b> ${info.color || '---'}
         </div>
-        <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
-        <div style="font-size: 18px;">
-          <b>ENTRADA:</b> ${fechaOficial}<br>
+        
+        <div style="border-top: 1px dashed black; margin: 4px 0;"></div>
+        
+        <div style="font-size: 14px;">
+          <b>ENTRADA:</b> ${fechaOficial}
         </div>
       </div>
-      <div style="margin: 10px; font-size: 17px; border: 2px solid black; padding: 6px; font-weight: bold;">
-        HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM
+
+      <div style="margin: 4px; font-size: 13px; border: 1px solid black; padding: 3px; font-weight: bold;">
+        HORARIO: 8:30 AM A 7:30 PM
       </div>
-      <div style="font-size: 13px; line-height: 1.2; margin: 0 10px; text-align: justify;">
-        <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor no depositados en la administración.
+
+      <div style="font-size: 10px; line-height: 1; margin: 0 5px; text-align: justify;">
+        No nos hacemos responsables por robo total o parcial, ni por objetos de valor no depositados en administración.
       </div>
-      <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">CONSERVE SU BOLETO<br>¡GRACIAS POR SU PREFERENCIA!</div>
+      
+      <div style="font-size: 12px; margin-top: 4px; font-weight: bold;">¡GRACIAS POR SU PREFERENCIA!</div>
     </div>
   `;
 
