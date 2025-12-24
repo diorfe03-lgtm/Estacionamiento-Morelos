@@ -11,7 +11,6 @@ app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Función para generar ID de 6 caracteres (sin letras confusas como O o I)
 function generarIdCorto() {
   const caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let resultado = "";
@@ -43,26 +42,44 @@ app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
   
-  const id = generarIdCorto(); // ID Corto generado
+  const id = generarIdCorto();
   const now = new Date(); 
+  const hoy = fechaCDMX(now);
 
-  const { data, error } = await supabase.from("tickets").insert([{
-    id, // Se inserta el ID corto
-    fecha: fechaCDMX(now), // Se guarda la fecha para división en Supabase
-    placas: placas.trim().toUpperCase(),
-    marca: marca || "", 
-    modelo: modelo || "", 
-    color: color || "", 
-    hora_entrada: now.toISOString(), 
-    cobrado: false
-  }]).select();
+  try {
+    // 1. Contar boletos de hoy para el folio
+    const { count, error: countError } = await supabase
+      .from("tickets")
+      .select('*', { count: 'exact', head: true })
+      .eq("fecha", hoy);
 
-  if (error) {
-    console.error("Error Supabase:", error);
-    return res.status(500).json({ error: "Error DB" });
+    if (countError) throw countError;
+    const nuevoFolio = (count || 0) + 1;
+
+    // 2. Insertar ticket
+    const { data, error } = await supabase.from("tickets").insert([{
+      id,
+      fecha: hoy,
+      placas: placas.trim().toUpperCase(),
+      marca: marca || "", 
+      modelo: modelo || "", 
+      color: color || "", 
+      hora_entrada: now.toISOString(), 
+      cobrado: false,
+      folio: nuevoFolio // Asegúrate de tener esta columna en Supabase
+    }]).select();
+
+    if (error) throw error;
+    
+    res.json({ 
+      id: data[0].id, 
+      hora_entrada: now.getTime(),
+      folio: nuevoFolio 
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Error DB" });
   }
-  
-  res.json({ id: data[0].id, hora_entrada: now.getTime() });
 });
 
 app.get("/ticket/:id", async (req, res) => {
@@ -109,10 +126,7 @@ app.post("/corte-caja", async (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+app.get("/", (req, res) => { res.sendFile(path.join(__dirname, "public", "index.html")); });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Servidor iniciado en puerto " + PORT));
