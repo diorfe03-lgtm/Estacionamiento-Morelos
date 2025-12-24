@@ -63,49 +63,53 @@ const API = window.location.origin;
 let html5QrCode;
 
 function enviarARawBT(id, info, horaServidor, folio) {
-  const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
-    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
-  });
+  try {
+    const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
+      hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
+    });
 
-  const ticketHTML = `
-    <div style="width: 290px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0; position: relative; line-height: 1.1;">
-      <div style="position: absolute; top: 0; left: 0; font-size: 16px; font-weight: bold;">#${folio}</div>
-      <b style="font-size: 16px; display: block; padding-top: 2px;">ESTACIONAMIENTO MORELOS 322</b>
-      
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="display: block; margin: 0 auto;" />
-      <div style="font-size: 18px; font-weight: bold; margin-top: -5px;">ID: ${id}</div>
+    // Diseño ultra simplificado para evitar errores de renderizado
+    const ticketHTML = `
+      <div style="width:280px;font-family:sans-serif;text-align:center;color:black;background:white;padding:5px;position:relative;">
+        <div style="position:absolute;top:0;left:0;font-size:18px;font-weight:bold;">#${folio}</div>
+        <b style="font-size:16px;display:block;">ESTACIONAMIENTO MORELOS 322</b>
+        
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="margin:5px auto;display:block;" />
+        <div style="font-size:18px;font-weight:bold;margin-top:-5px;">ID: ${id}</div>
 
-      <div style="text-align: left; margin: 2px 5px;">
-        <div style="border-top: 1px solid black; border-bottom: 1px solid black; padding: 2px 0;">
-          <b style="font-size: 12px;">PLACAS:</b>
-          <b style="font-size: 20px; float: right; line-height: 1;">${info.placas.toUpperCase()}</b>
-          <div style="clear: both;"></div>
+        <div style="text-align:left;border-top:1px solid black;border-bottom:1px solid black;margin:5px 0;padding:2px 0;">
+          <span style="font-size:12px;">PLACAS:</span>
+          <b style="font-size:22px;float:right;">${info.placas.toUpperCase()}</b>
+          <div style="clear:both;"></div>
         </div>
-        <div style="font-size: 12px; margin-top: 2px;">
+        
+        <div style="text-align:left;font-size:12px;line-height:1.2;">
           <b>AUTO:</b> ${info.marca || ''} ${info.color || ''}<br>
           <b>ENTRADA:</b> ${fechaOficial}
         </div>
-      </div>
 
-      <div style="margin: 2px; font-size: 12px; border: 1px solid black; font-weight: bold; padding: 1px;">
-        HORARIO: 8:30 AM A 7:30 PM
-      </div>
+        <div style="margin:5px 0;font-size:12px;border:1px solid black;font-weight:bold;padding:2px;">
+          HORARIO: 8:30 AM A 7:30 PM
+        </div>
 
-      <div style="font-size: 9px; margin: 0 5px; font-weight: bold; text-align: center;">
-        No nos hacemos responsables por robo total o parcial de los automóviles ni por objetos de valor.
+        <div style="font-size:9px;font-weight:bold;">
+          No nos hacemos responsables por robo total o parcial de los autos ni por objetos de valor.
+        </div>
       </div>
-    </div>
-  `;
+    `;
 
-  const oldIframe = document.getElementById('hidden-print-iframe');
-  if(oldIframe) oldIframe.remove();
-  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
-  const rawbtUrl = "rawbt:data:text/html;base64," + btoa(unescape(encodeURIComponent(cleanHtml)));
-  const iframe = document.createElement('iframe');
-  iframe.id = 'hidden-print-iframe'; 
-  iframe.style.display = 'none';
-  document.body.appendChild(iframe);
-  iframe.src = rawbtUrl;
+    // Limpieza de HTML para evitar caracteres que rompan la URL
+    const cleanHtml = ticketHTML.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+    const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
+    const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
+
+    // Método directo de apertura para Android/RawBT
+    window.location.href = rawbtUrl;
+
+  } catch (err) {
+    console.error("Error en impresión:", err);
+    alert("Error al preparar ticket: " + err.message);
+  }
 }
 
 async function createTicket() {
