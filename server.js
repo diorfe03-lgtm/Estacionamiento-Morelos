@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const { v4: uuid } = require("uuid");
 const { createClient } = require("@supabase/supabase-js");
 const path = require("path");
 
@@ -11,6 +10,15 @@ app.use(cors());
 app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+function generarIdCorto() {
+  const caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let resultado = "";
+  for (let i = 0; i < 6; i++) {
+    resultado += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+  }
+  return resultado;
+}
 
 function fechaCDMX(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -23,9 +31,6 @@ function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
   const ahora = new Date(); 
   const minsTotales = Math.floor((ahora - entrada) / 60000);
-  
-  // Regla: 15 pesos la primera hora (hasta 70 min de tolerancia), 
-  // luego 5 pesos cada 20 min extra
   if (minsTotales <= 70) return 15;
   const minsExcedentes = minsTotales - 70;
   const bloquesExtra = Math.ceil(minsExcedentes / 20);
@@ -36,45 +41,56 @@ app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
   
-  const id = uuid();
-  const now = new Date(); 
+  const id = generarIdCorto();
+  const now = new Date();
+  const hoy = fechaCDMX(now);
 
-  const { data, error } = await supabase.from("tickets").insert([{
-    id, 
-    fecha: fechaCDMX(now), 
-    placas: placas.trim().toUpperCase(),
-    marca: marca || "", 
-    modelo: modelo || "", 
-    color: color || "", 
-    hora_entrada: now.toISOString(), 
-    cobrado: false
-  }]).select();
+  try {
+    // Cuenta cuántos boletos hay hoy para asignar el siguiente folio (1, 2, 3...)
+    const { count } = await supabase
+      .from("tickets")
+      .select('*', { count: 'exact', head: true })
+      .eq("fecha", hoy);
 
-  if (error) {
+    const nuevoFolio = (count || 0) + 1;
+
+    const { data, error } = await supabase.from("tickets").insert([{
+      id,
+      fecha: hoy,
+      folio_diario: nuevoFolio, // Nueva columna para el conteo ascendente
+      placas: placas.trim().toUpperCase(),
+      marca: marca || "", 
+      modelo: modelo || "", 
+      color: color || "", 
+      hora_entrada: now.toISOString(), 
+      cobrado: false
+    }]).select();
+
+    if (error) throw error;
+    
+    // Devolvemos el folio generado al cliente
+    res.json({ id: data[0].id, hora_entrada: now.getTime(), folio: nuevoFolio });
+
+  } catch (error) {
     console.error("Error Supabase:", error);
     return res.status(500).json({ error: "Error DB" });
   }
-  
-  res.json({ id: data[0].id, hora_entrada: now.getTime() });
 });
 
 app.get("/ticket/:id", async (req, res) => {
   const { data: t, error } = await supabase.from("tickets")
     .select("*")
-    .eq("id", req.params.id)
+    .eq("id", req.params.id.toUpperCase())
     .single();
 
   if (error || !t) return res.status(404).json({ error: "No encontrado" });
   if (t.cobrado) return res.status(400).json({ error: "Este boleto ya fue pagado" });
   
-  res.json({ 
-    placas: t.placas, 
-    monto: calcularMonto(t.hora_entrada) 
-  });
+  res.json({ placas: t.placas, monto: calcularMonto(t.hora_entrada) });
 });
 
 app.post("/pay/:id", async (req, res) => {
-  const { data: t } = await supabase.from("tickets").select("*").eq("id", req.params.id).single();
+  const { data: t } = await supabase.from("tickets").select("*").eq("id", req.params.id.toUpperCase()).single();
   if(!t) return res.status(404).json({ error: "No encontrado" });
 
   const monto = calcularMonto(t.hora_entrada);
@@ -82,30 +98,24 @@ app.post("/pay/:id", async (req, res) => {
     cobrado: true, 
     hora_salida: new Date().toISOString(), 
     monto: monto
-  }).eq("id", req.params.id);
+  }).eq("id", req.params.id.toUpperCase());
 
   res.json({ success: true });
 });
 
 app.post("/corte-caja", async (req, res) => {
   if (req.body.password !== "1234") return res.status(401).json({ error: "Incorrecto" });
-  
   const { data, error } = await supabase.from("tickets")
     .select("monto")
     .eq("fecha", fechaCDMX())
     .eq("cobrado", true);
-
   if (error) return res.status(500).json({ error: "Error DB" });
-  
   const total = data.reduce((sum, t) => sum + Number(t.monto || 0), 0);
   res.json({ total, boletos: data.length });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+app.get("/", (req, res) => { res.sendFile(path.join(__dirname, "public", "index.html")); });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Servidor iniciado en puerto " + PORT));
