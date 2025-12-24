@@ -110,17 +110,6 @@ function enviarARawBT(id, info, horaServidor, folio) {
   iframe.src = rawbtUrl;
 }
 
-  const oldIframe = document.getElementById('hidden-print-iframe');
-  if(oldIframe) oldIframe.remove();
-  const cleanHtml = ticketHTML.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
-  const rawbtUrl = "rawbt:data:text/html;base64," + btoa(unescape(encodeURIComponent(cleanHtml)));
-  const iframe = document.createElement('iframe');
-  iframe.id = 'hidden-print-iframe'; 
-  iframe.style.display = 'none';
-  document.body.appendChild(iframe);
-  iframe.src = rawbtUrl;
-}
-
 async function createTicket() {
   const pVal = document.getElementById("placas").value.trim();
   if (!pVal) return alert("Placas obligatorias");
