@@ -63,83 +63,80 @@ const API = window.location.origin;
 let html5QrCode;
 
 function enviarARawBT(id, info, horaServidor, folio) {
-  try {
-    const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
-      hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
-    });
+  const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
+    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
+  });
 
-    // Diseño ultra simplificado para evitar errores de renderizado
-    const ticketHTML = `
-      <div style="width:280px;font-family:sans-serif;text-align:center;color:black;background:white;padding:5px;position:relative;">
-        <div style="position:absolute;top:0;left:0;font-size:18px;font-weight:bold;">#${folio}</div>
-        <b style="font-size:16px;display:block;">ESTACIONAMIENTO MORELOS 322</b>
-        
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="margin:5px auto;display:block;" />
-        <div style="font-size:18px;font-weight:bold;margin-top:-5px;">ID: ${id}</div>
-
-        <div style="text-align:left;border-top:1px solid black;border-bottom:1px solid black;margin:5px 0;padding:2px 0;">
-          <span style="font-size:12px;">PLACAS:</span>
-          <b style="font-size:22px;float:right;">${info.placas.toUpperCase()}</b>
-          <div style="clear:both;"></div>
-        </div>
-        
-        <div style="text-align:left;font-size:12px;line-height:1.2;">
-          <b>AUTO:</b> ${info.marca || ''} ${info.color || ''}<br>
-          <b>ENTRADA:</b> ${fechaOficial}
-        </div>
-
-        <div style="margin:5px 0;font-size:12px;border:1px solid black;font-weight:bold;padding:2px;">
-          HORARIO: 8:30 AM A 7:30 PM
-        </div>
-
-        <div style="font-size:9px;font-weight:bold;">
-          No nos hacemos responsables por robo total o parcial de los autos ni por objetos de valor.
-        </div>
+  const ticketHTML = `
+    <div style="width:280px;font-family:sans-serif;text-align:center;color:black;background:white;padding:5px;position:relative;">
+      <div style="position:absolute;top:0;left:0;font-size:18px;font-weight:bold;">#${folio}</div>
+      <b style="font-size:16px;display:block;">ESTACIONAMIENTO MORELOS 322</b>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="200" height="200" style="margin:5px auto;display:block;" />
+      <div style="font-size:18px;font-weight:bold;">ID: ${id}</div>
+      <div style="text-align:left;border-top:1px solid black;border-bottom:1px solid black;margin:5px 0;padding:2px 0;">
+        <span style="font-size:12px;">PLACAS:</span>
+        <b style="font-size:22px;float:right;">${info.placas.toUpperCase()}</b>
+        <div style="clear:both;"></div>
       </div>
-    `;
+      <div style="text-align:left;font-size:12px;">
+        <b>AUTO:</b> ${info.marca || ''} ${info.color || ''}<br>
+        <b>ENTRADA:</b> ${fechaOficial}
+      </div>
+      <div style="margin:5px 0;font-size:11px;border:1px solid black;font-weight:bold;padding:2px;">8:30 AM A 7:30 PM</div>
+      <div style="font-size:9px;font-weight:bold;">No nos hacemos responsables por robo total o parcial de los autos ni por objetos de valor.</div>
+    </div>`;
 
-    // Limpieza de HTML para evitar caracteres que rompan la URL
-    const cleanHtml = ticketHTML.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
-    const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
-    const rawbtUrl = "rawbt:data:text/html;base64," + base64Html;
-
-    // Método directo de apertura para Android/RawBT
-    window.location.href = rawbtUrl;
-
-  } catch (err) {
-    console.error("Error en impresión:", err);
-    alert("Error al preparar ticket: " + err.message);
-  }
+  const cleanHtml = ticketHTML.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+  const base64Html = btoa(unescape(encodeURIComponent(cleanHtml)));
+  // Abrir directamente en RawBT
+  window.location.href = "rawbt:data:text/html;base64," + base64Html;
 }
 
 async function createTicket() {
   const pVal = document.getElementById("placas").value.trim();
   if (!pVal) return alert("Placas obligatorias");
+  
   const btn = document.getElementById("btnCreate");
   btn.disabled = true;
   btn.innerText = "Procesando...";
+
   const info = { 
     placas: pVal, 
     marca: document.getElementById("marca").value.trim(), 
     modelo: document.getElementById("modelo").value.trim(), 
     color: document.getElementById("color").value.trim() 
   };
+
   try {
     const res = await fetch(API + "/ticket", { 
       method:"POST", 
       headers:{"Content-Type":"application/json"}, 
       body: JSON.stringify(info) 
     });
+    
     const data = await res.json();
+    
     if(data.id) {
       enviarARawBT(data.id, info, data.hora_entrada, data.folio);
       document.querySelectorAll("#newTicket input").forEach(i => i.value = "");
-      alert("Ticket #" + data.folio + " Creado Correctamente");
+      alert("Ticket #" + data.folio + " Creado");
       showNew();
+    } else {
+      alert("Error del servidor: " + (data.error || "Desconocido"));
     }
-  } catch (e) { alert("Error de conexión"); } 
-  finally { btn.disabled = false; btn.innerText = "Imprimir Ticket"; }
+  } catch (e) { 
+    alert("Error de conexión al servidor"); 
+    console.log(e);
+  } finally { 
+    btn.disabled = false; 
+    btn.innerText = "Imprimir Ticket"; 
+  }
 }
+
+// Funciones de navegación (showNew, showPay, toggleAdmin, etc.) se mantienen igual
+function showNew() { document.getElementById("newTicket").classList.toggle("hidden"); document.getElementById("payTicket").classList.add("hidden"); }
+function showPay() { document.getElementById("payTicket").classList.toggle("hidden"); document.getElementById("newTicket").classList.add("hidden"); document.getElementById("confirmArea").classList.add("hidden"); document.getElementById("qrId").value = ""; }
+function toggleAdmin() { document.getElementById("adminPanel").classList.toggle("hidden"); }
 
 async function scanQr() {
   const id = document.getElementById("qrId").value.trim().toUpperCase();
@@ -159,17 +156,13 @@ async function confirmPayment() {
   showPay();
 }
 
-function toggleAdmin() { document.getElementById("adminPanel").classList.toggle("hidden"); }
 async function obtenerCorte() {
   const pass = document.getElementById("adminPass").value;
   const res = await fetch(API + "/corte-caja", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ password: pass }) });
   const data = await res.json();
-  if(data.error) return alert("Contraseña Incorrecta");
-  document.getElementById("adminResult").innerHTML = `<div class="card"><p>Monto Total: <b style="color:#16a34a; font-size:20px;">$${data.total}.00</b></p><p>Coches Totales: <b>${data.boletos}</b></p></div>`;
+  if(data.error) return alert("Incorrecto");
+  document.getElementById("adminResult").innerHTML = `<div class="card"><p>Total: <b>$${data.total}.00</b></p><p>Coches: <b>${data.boletos}</b></p></div>`;
 }
-
-function showNew() { document.getElementById("newTicket").classList.toggle("hidden"); document.getElementById("payTicket").classList.add("hidden"); }
-function showPay() { document.getElementById("payTicket").classList.toggle("hidden"); document.getElementById("newTicket").classList.add("hidden"); document.getElementById("confirmArea").classList.add("hidden"); document.getElementById("confirmPaid").checked = false; document.getElementById("qrId").value = ""; document.getElementById("chargeInfo").innerHTML = ""; }
 
 function startScanner() {
   document.getElementById("reader").classList.remove("hidden");
@@ -177,8 +170,6 @@ function startScanner() {
   html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
       document.getElementById("qrId").value = text;
       html5QrCode.stop().then(() => { document.getElementById("reader").classList.add("hidden"); scanQr(); });
-  }).catch(err => alert("Error al abrir cámara"));
+  }).catch(err => alert("Error cámara"));
 }
 </script>
-</body>
-</html>

@@ -31,7 +31,6 @@ function calcularMonto(horaEntrada) {
   const entrada = new Date(horaEntrada);
   const ahora = new Date(); 
   const minsTotales = Math.floor((ahora - entrada) / 60000);
-  
   if (minsTotales <= 70) return 15;
   const minsExcedentes = minsTotales - 70;
   const bloquesExtra = Math.ceil(minsExcedentes / 20);
@@ -47,7 +46,7 @@ app.post("/ticket", async (req, res) => {
   const hoy = fechaCDMX(now);
 
   try {
-    // 1. Contar boletos de hoy para el folio
+    // 1. Contar boletos de hoy
     const { count, error: countError } = await supabase
       .from("tickets")
       .select('*', { count: 'exact', head: true })
@@ -66,7 +65,7 @@ app.post("/ticket", async (req, res) => {
       color: color || "", 
       hora_entrada: now.toISOString(), 
       cobrado: false,
-      folio: nuevoFolio // Asegúrate de tener esta columna en Supabase
+      folio: nuevoFolio
     }]).select();
 
     if (error) throw error;
@@ -77,50 +76,31 @@ app.post("/ticket", async (req, res) => {
       folio: nuevoFolio 
     });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Error DB" });
+    console.error("ERROR EN POST /TICKET:", e);
+    res.status(500).json({ error: e.message || "Error DB" });
   }
 });
 
+// ... Resto de rutas (get /ticket/:id, post /pay/:id, post /corte-caja) se mantienen igual ...
 app.get("/ticket/:id", async (req, res) => {
-  const { data: t, error } = await supabase.from("tickets")
-    .select("*")
-    .eq("id", req.params.id.toUpperCase())
-    .single();
-
+  const { data: t, error } = await supabase.from("tickets").select("*").eq("id", req.params.id.toUpperCase()).single();
   if (error || !t) return res.status(404).json({ error: "No encontrado" });
-  if (t.cobrado) return res.status(400).json({ error: "Este boleto ya fue pagado" });
-  
-  res.json({ 
-    placas: t.placas, 
-    monto: calcularMonto(t.hora_entrada) 
-  });
+  if (t.cobrado) return res.status(400).json({ error: "Pagado" });
+  res.json({ placas: t.placas, monto: calcularMonto(t.hora_entrada) });
 });
 
 app.post("/pay/:id", async (req, res) => {
   const { data: t } = await supabase.from("tickets").select("*").eq("id", req.params.id.toUpperCase()).single();
   if(!t) return res.status(404).json({ error: "No encontrado" });
-
   const monto = calcularMonto(t.hora_entrada);
-  await supabase.from("tickets").update({
-    cobrado: true, 
-    hora_salida: new Date().toISOString(), 
-    monto: monto
-  }).eq("id", req.params.id.toUpperCase());
-
+  await supabase.from("tickets").update({ cobrado: true, hora_salida: new Date().toISOString(), monto: monto }).eq("id", req.params.id.toUpperCase());
   res.json({ success: true });
 });
 
 app.post("/corte-caja", async (req, res) => {
   if (req.body.password !== "1234") return res.status(401).json({ error: "Incorrecto" });
-  
-  const { data, error } = await supabase.from("tickets")
-    .select("monto")
-    .eq("fecha", fechaCDMX())
-    .eq("cobrado", true);
-
+  const { data, error } = await supabase.from("tickets").select("monto").eq("fecha", fechaCDMX()).eq("cobrado", true);
   if (error) return res.status(500).json({ error: "Error DB" });
-  
   const total = data.reduce((sum, t) => sum + Number(t.monto || 0), 0);
   res.json({ total, boletos: data.length });
 });
@@ -129,4 +109,4 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => { res.sendFile(path.join(__dirname, "public", "index.html")); });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor iniciado en puerto " + PORT));
+app.listen(PORT, () => console.log("Servidor en puerto " + PORT));
