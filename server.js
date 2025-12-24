@@ -65,7 +65,7 @@ app.post("/ticket", async (req, res) => {
       color: color || "", 
       hora_entrada: now.toISOString(), 
       cobrado: false,
-      folio: nuevoFolio
+      folio_diario: nuevoFolio
     }]).select();
 
     if (error) throw error;
