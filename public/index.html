@@ -79,9 +79,9 @@ function enviarARawBT(id, info, horaServidor, folio) {
         <div style="font-size: 24px; font-weight: bold; margin-top: 5px;">ID: ${id}</div>
       </div>
       <div style="text-align: left; margin: 5px 10px;">
-        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
-          <b style="font-size: 20px;">PLACAS:</b>
-          <b style="font-size: 35px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()} #${folio}</b>
+        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 8px 0; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <b style="font-size: 28px; line-height: 1;">${info.placas.toUpperCase()}</b>
+          <b style="font-size: 28px; line-height: 1;">#${folio}</b>
         </div>
         <div style="font-size: 19px; line-height: 1.2;">
           <b>MARCA:</b> ${info.marca || '---'}<br>
@@ -140,7 +140,6 @@ async function createTicket() {
     const data = await res.json();
 
     if(data.id) {
-      // Se pasa el folio recibido del servidor
       enviarARawBT(data.id, info, data.hora_entrada, data.folio);
       document.querySelectorAll("#newTicket input").forEach(i => i.value = "");
       alert("Ticket Creado Correctamente #" + data.folio);
