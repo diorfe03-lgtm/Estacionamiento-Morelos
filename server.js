@@ -11,7 +11,6 @@ app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Función para generar ID de 6 caracteres (sin letras confusas como O o I)
 function generarIdCorto() {
   const caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let resultado = "";
@@ -43,26 +42,45 @@ app.post("/ticket", async (req, res) => {
   const { placas, marca, modelo, color } = req.body;
   if (!placas) return res.status(400).json({ error: "Faltan placas" });
   
-  const id = generarIdCorto(); // ID Corto generado
+  const id = generarIdCorto();
   const now = new Date(); 
+  const hoy = fechaCDMX(now);
 
-  const { data, error } = await supabase.from("tickets").insert([{
-    id, // Se inserta el ID corto
-    fecha: fechaCDMX(now), // Se guarda la fecha para división en Supabase
-    placas: placas.trim().toUpperCase(),
-    marca: marca || "", 
-    modelo: modelo || "", 
-    color: color || "", 
-    hora_entrada: now.toISOString(), 
-    cobrado: false
-  }]).select();
+  try {
+    // Lógica de Folio Ascendente: Contamos cuántos boletos hay hoy
+    const { count, error: countError } = await supabase
+      .from("tickets")
+      .select('id', { count: 'exact', head: true })
+      .eq("fecha", hoy);
 
-  if (error) {
-    console.error("Error Supabase:", error);
-    return res.status(500).json({ error: "Error DB" });
+    if (countError) throw countError;
+
+    const nuevoFolio = (count || 0) + 1;
+
+    const { data, error } = await supabase.from("tickets").insert([{
+      id,
+      fecha: hoy,
+      placas: placas.trim().toUpperCase(),
+      marca: marca || "", 
+      modelo: modelo || "", 
+      color: color || "", 
+      hora_entrada: now.toISOString(), 
+      cobrado: false
+    }]).select();
+
+    if (error) throw error;
+    
+    // Devolvemos el ID y el Folio para la impresión
+    res.json({ 
+      id: data[0].id, 
+      hora_entrada: now.getTime(),
+      folio: nuevoFolio 
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Error en el servidor" });
   }
-  
-  res.json({ id: data[0].id, hora_entrada: now.getTime() });
 });
 
 app.get("/ticket/:id", async (req, res) => {

@@ -62,7 +62,7 @@
 const API = window.location.origin;
 let html5QrCode;
 
-function enviarARawBT(id, info, horaServidor) {
+function enviarARawBT(id, info, horaServidor, folio) {
   const fechaOficial = new Date(horaServidor).toLocaleString('es-MX', { 
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
   });
@@ -81,7 +81,7 @@ function enviarARawBT(id, info, horaServidor) {
       <div style="text-align: left; margin: 5px 10px;">
         <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 5px 0; margin-bottom: 10px;">
           <b style="font-size: 20px;">PLACAS:</b>
-          <b style="font-size: 35px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()}</b>
+          <b style="font-size: 35px; display: block; text-align: center; line-height: 1;">${info.placas.toUpperCase()} #${folio}</b>
         </div>
         <div style="font-size: 19px; line-height: 1.2;">
           <b>MARCA:</b> ${info.marca || '---'}<br>
@@ -140,9 +140,10 @@ async function createTicket() {
     const data = await res.json();
 
     if(data.id) {
-      enviarARawBT(data.id, info, data.hora_entrada);
+      // Se pasa el folio recibido del servidor
+      enviarARawBT(data.id, info, data.hora_entrada, data.folio);
       document.querySelectorAll("#newTicket input").forEach(i => i.value = "");
-      alert("Ticket Creado Correctamente");
+      alert("Ticket Creado Correctamente #" + data.folio);
       showNew();
     } else {
       alert("Error al crear ticket");
