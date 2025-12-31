@@ -47,7 +47,6 @@ app.post("/ticket", async (req, res) => {
   const hoy = fechaCDMX(now);
 
   try {
-    // Lógica de Folio Ascendente: Contamos cuántos boletos hay hoy
     const { count, error: countError } = await supabase
       .from("tickets")
       .select('id', { count: 'exact', head: true })
@@ -65,12 +64,12 @@ app.post("/ticket", async (req, res) => {
       modelo: modelo || "", 
       color: color || "", 
       hora_entrada: now.toISOString(), 
-      cobrado: false
+      cobrado: false,
+      folio_diario: nuevoFolio
     }]).select();
 
     if (error) throw error;
     
-    // Devolvemos el ID y el Folio para la impresión
     res.json({ 
       id: data[0].id, 
       hora_entrada: now.getTime(),
@@ -79,6 +78,26 @@ app.post("/ticket", async (req, res) => {
 
   } catch (error) {
     console.error("Error:", error);
+    res.status(500).json({ error: "Error en el servidor" });
+  }
+});
+
+// NUEVA RUTA: Buscar boleto activo por placa (Boleto Perdido)
+app.get("/ticket/placa/:placa", async (req, res) => {
+  const { placa } = req.params;
+  try {
+    const { data: t, error } = await supabase
+      .from("tickets")
+      .select("id")
+      .eq("placas", placa.toUpperCase())
+      .eq("cobrado", false)
+      .order('hora_entrada', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !t) return res.status(404).json({ error: "No se encontró un boleto activo para esta placa" });
+    res.json({ id: t.id });
+  } catch (e) {
     res.status(500).json({ error: "Error en el servidor" });
   }
 });
