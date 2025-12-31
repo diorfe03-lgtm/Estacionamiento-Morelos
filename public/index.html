@@ -67,32 +67,41 @@ function enviarARawBT(id, info, horaServidor, folio) {
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
   });
 
-  /* CAMBIO AQUI: Ancho reducido a 300px y uso de FLOAT en lugar de FLEX para asegurar impresión */
+  /* SOLUCION CON TABLA: Esto evita que el número desaparezca */
   const ticketHTML = `
-    <div style="width: 300px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 5px; margin: 0 auto;">
+    <div style="width: 290px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 2px; margin: 0 auto;">
       <div style="margin-bottom: 5px;">
         <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
         <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
         <span style="font-size: 15px; display: block; line-height: 1.1;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
       </div>
+      
       <div style="margin: 5px auto;">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="180" height="180" style="display: block; margin: auto;" />
         <div style="font-size: 24px; font-weight: bold; margin-top: 5px;">ID: ${id}</div>
       </div>
       
-      <div style="text-align: left; margin: 5px 0;">
-        <div style="border-top: 3px solid black; border-bottom: 3px solid black; padding: 8px 0; margin-bottom: 10px; overflow: hidden;">
-          <b style="float: left; font-size: 26px; line-height: 1;">${info.placas.toUpperCase()}</b>
-          <b style="float: right; font-size: 26px; line-height: 1;">#${folio}</b>
-        </div>
+      <div style="margin: 5px 0;">
+        <table style="width: 100%; border-top: 3px solid black; border-bottom: 3px solid black; border-collapse: collapse; margin-bottom: 10px;">
+          <tr>
+            <td style="text-align: left; padding: 8px 0;">
+               <b style="font-size: 26px;">${info.placas.toUpperCase()}</b>
+            </td>
+            <td style="text-align: right; padding: 8px 0;">
+               <b style="font-size: 26px;">#${folio}</b>
+            </td>
+          </tr>
+        </table>
 
-        <div style="font-size: 19px; line-height: 1.2;">
+        <div style="text-align: left; font-size: 19px; line-height: 1.2;">
           <b>MARCA:</b> ${info.marca || '---'}<br>
           <b>MODELO:</b> ${info.modelo || '---'}<br>
           <b>COLOR:</b> ${info.color || '---'}
         </div>
+        
         <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
-        <div style="font-size: 18px;">
+        
+        <div style="text-align: left; font-size: 18px;">
           <b>ENTRADA:</b> ${fechaOficial}<br>
         </div>
       </div>
