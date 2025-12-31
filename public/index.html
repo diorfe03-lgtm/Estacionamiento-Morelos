@@ -67,52 +67,50 @@ function enviarARawBT(id, info, horaServidor, folio) {
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: true, timeZone: 'America/Mexico_City' 
   });
 
-  /* SOLUCION CON TABLA: Esto evita que el número desaparezca */
+  // ANCHO REDUCIDO A 270px (Para asegurar compatibilidad con cualquier impresora 58mm)
   const ticketHTML = `
-    <div style="width: 290px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 2px; margin: 0 auto;">
+    <div style="width: 270px; font-family: Arial, sans-serif; text-align: center; color: black; background: white; padding: 0; margin: 0 auto;">
+      
       <div style="margin-bottom: 5px;">
-        <b style="font-size: 24px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
-        <b style="font-size: 24px; display: block; margin-bottom: 3px;">MORELOS 322</b>
-        <span style="font-size: 15px; display: block; line-height: 1.1;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
+        <b style="font-size: 22px; display: block; line-height: 1;">ESTACIONAMIENTO</b>
+        <b style="font-size: 22px; display: block; margin-bottom: 3px;">MORELOS 322</b>
+        <span style="font-size: 14px; display: block; line-height: 1.1;">Morelos y Escobedo Centro<br>Comalcalco, Tabasco</span>
       </div>
       
       <div style="margin: 5px auto;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="180" height="180" style="display: block; margin: auto;" />
-        <div style="font-size: 24px; font-weight: bold; margin-top: 5px;">ID: ${id}</div>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${id}" width="160" height="160" style="display: block; margin: auto;" />
+        <div style="font-size: 20px; font-weight: bold; margin-top: 2px;">ID: ${id}</div>
       </div>
       
-      <div style="margin: 5px 0;">
-        <table style="width: 100%; border-top: 3px solid black; border-bottom: 3px solid black; border-collapse: collapse; margin-bottom: 10px;">
-          <tr>
-            <td style="text-align: left; padding: 8px 0;">
-               <b style="font-size: 26px;">${info.placas.toUpperCase()}</b>
-            </td>
-            <td style="text-align: right; padding: 8px 0;">
-               <b style="font-size: 26px;">#${folio}</b>
-            </td>
-          </tr>
-        </table>
-
-        <div style="text-align: left; font-size: 19px; line-height: 1.2;">
-          <b>MARCA:</b> ${info.marca || '---'}<br>
-          <b>MODELO:</b> ${info.modelo || '---'}<br>
-          <b>COLOR:</b> ${info.color || '---'}
-        </div>
-        
-        <div style="border-top: 2px dashed black; margin: 10px 0;"></div>
-        
-        <div style="text-align: left; font-size: 18px;">
-          <b>ENTRADA:</b> ${fechaOficial}<br>
-        </div>
+      <div style="border-top: 3px solid black; border-bottom: 3px solid black; margin: 5px 0; padding: 5px 0;">
+        <div style="font-size: 16px; font-weight: bold;">PLACAS:</div>
+        <div style="font-size: 32px; font-weight: bold; line-height: 1.1;">${info.placas.toUpperCase()}</div>
       </div>
 
-      <div style="margin: 10px 0; font-size: 17px; border: 2px solid black; padding: 6px; font-weight: bold;">
+      <div style="text-align: left; margin: 5px 0; font-size: 18px; line-height: 1.2;">
+        <b>MARCA:</b> ${info.marca || '---'}<br>
+        <b>MODELO:</b> ${info.modelo || '---'}<br>
+        <b>COLOR:</b> ${info.color || '---'}
+      </div>
+      
+      <div style="border-top: 2px dashed black; margin: 8px 0;"></div>
+      
+      <div style="text-align: left; font-size: 17px;">
+        <b>ENTRADA:</b> ${fechaOficial}<br>
+      </div>
+
+      <div style="margin: 10px 0; font-size: 14px; border: 2px solid black; padding: 5px; font-weight: bold;">
         HORARIO DE SERVICIO:<br>8:30 AM A 7:30 PM
       </div>
-      <div style="font-size: 13px; line-height: 1.2; margin: 0; text-align: justify;">
-        <b>AVISO IMPORTANTE:</b> No nos hacemos responsables por robo total o parcial de los automóviles, ni por objetos de valor.
+      <div style="font-size: 12px; line-height: 1.1; margin: 0; text-align: justify;">
+        No nos hacemos responsables por robo total o parcial, ni objetos de valor.
       </div>
-      <div style="font-size: 15px; margin-top: 10px; font-weight: bold;">CONSERVE SU BOLETO<br><br>.</div>
+      
+      <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+         <span style="font-size: 12px; font-weight: bold;">CONSERVE SU BOLETO</span>
+         <span style="font-size: 24px; font-weight: bold;">#${folio}</span>
+      </div>
+      <br>
     </div>
   `;
 
