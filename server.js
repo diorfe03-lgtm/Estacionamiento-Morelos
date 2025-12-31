@@ -85,11 +85,13 @@ app.post("/ticket", async (req, res) => {
 // NUEVA RUTA: Buscar boleto activo por placa (Boleto Perdido)
 app.get("/ticket/placa/:placa", async (req, res) => {
   const { placa } = req.params;
+  const hoy = fechaCDMX();
   try {
     const { data: t, error } = await supabase
       .from("tickets")
       .select("id")
       .eq("placas", placa.toUpperCase())
+      .eq("fecha", hoy)
       .eq("cobrado", false)
       .order('hora_entrada', { ascending: false })
       .limit(1)
