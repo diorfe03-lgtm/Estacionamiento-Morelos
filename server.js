@@ -28,14 +28,24 @@ function fechaCDMX(date = new Date()) {
 }
 
 function calcularMonto(horaEntrada) {
-  const entrada = new Date(horaEntrada);
-  const ahora = new Date(); 
-  const minsTotales = Math.floor((ahora - entrada) / 60000);
+  const entrada = new Date(horaEntrada).getTime(); // Convertimos a milisegundos exactos
+  const ahora = new Date().getTime(); 
   
-  if (minsTotales <= 70) return 15;
-  const minsExcedentes = minsTotales - 70;
-  const bloquesExtra = Math.ceil(minsExcedentes / 20);
-  return 15 + (bloquesExtra * 5);
+  // Calculamos la diferencia absoluta
+  const diferenciaMilis = ahora - entrada;
+  const minsTotales = Math.floor(diferenciaMilis / 60000);
+  
+  console.log("Minutos calculados:", minsTotales); // Esto te servirá para monitorear en la consola
+
+  if (minsTotales <= 70) {
+    return 15;
+  } else {
+    // Si tiene 71 minutos o más:
+    const minsExcedentes = minsTotales - 70;
+    // Math.ceil asegura que desde el minuto 1 de exceso ya cobre el siguiente bloque
+    const bloquesExtra = Math.ceil(minsExcedentes / 20);
+    return 15 + (bloquesExtra * 5);
+  }
 }
 
 app.post("/ticket", async (req, res) => {
